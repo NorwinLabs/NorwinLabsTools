@@ -9,6 +9,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.widget.PopupMenu
 import com.example.norwinlabstools.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -29,9 +30,26 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
+            val popup = PopupMenu(this, view)
+            popup.menuInflater.inflate(R.menu.fab_menu, popup.menu)
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_email -> {
+                        Snackbar.make(view, "Opening Email...", Snackbar.LENGTH_SHORT).show()
+                        true
+                    }
+                    R.id.action_feedback -> {
+                        Snackbar.make(view, "Opening Feedback...", Snackbar.LENGTH_SHORT).show()
+                        true
+                    }
+                    R.id.action_share -> {
+                        Snackbar.make(view, "Sharing App...", Snackbar.LENGTH_SHORT).show()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            popup.show()
         }
     }
 
