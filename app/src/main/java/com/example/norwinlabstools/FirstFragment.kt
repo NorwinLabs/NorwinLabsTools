@@ -151,7 +151,7 @@ class FirstFragment : Fragment() {
                 }
             }
 
-            override fun onError(error: String) {
+            override fun onError(error: String, url: String) {
                 activity?.runOnUiThread {
                     binding.textviewUpdateStatus.text = "Check failed"
                 }
@@ -188,9 +188,13 @@ class FirstFragment : Fragment() {
                 }
             }
 
-            override fun onError(error: String) {
+            override fun onError(error: String, url: String) {
                 activity?.runOnUiThread {
-                    Toast.makeText(requireContext(), "Update check failed: $error", Toast.LENGTH_SHORT).show()
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Update Failed")
+                        .setMessage("$error\n\nChecked URL:\n$url")
+                        .setPositiveButton("OK", null)
+                        .show()
                 }
             }
         })
