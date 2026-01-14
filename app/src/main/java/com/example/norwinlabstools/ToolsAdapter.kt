@@ -7,6 +7,8 @@ import android.view.animation.Animation
 import android.view.animation.RotateAnimation
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.example.norwinlabstools.databinding.ItemToolBinding
 import java.util.Collections
 
@@ -54,12 +56,26 @@ class ToolsAdapter(
             binding.toolIcon.setImageResource(tool.iconRes)
             binding.toolVersion.text = "v${tool.version}"
             
+            // Apply overlay color
+            binding.toolColorOverlay.setBackgroundColor(tool.color)
+            
+            // Load background image if available
+            if (tool.imageUrl != null) {
+                Glide.with(binding.root.context)
+                    .load(tool.imageUrl)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .placeholder(android.R.color.darker_gray)
+                    .error(tool.color)
+                    .into(binding.toolImageBackground)
+            } else {
+                binding.toolImageBackground.setImageDrawable(null)
+                binding.toolBackground.setBackgroundColor(tool.color)
+            }
+            
             binding.buttonRemove.visibility = if (isEditMode) View.VISIBLE else View.GONE
             binding.buttonRemove.setOnClickListener { onRemoveClick(tool) }
 
-            binding.cardTool.setOnClickListener { 
-                onToolClick(tool) 
-            }
+            binding.cardTool.setOnClickListener { onToolClick(tool) }
             binding.cardTool.setOnLongClickListener {
                 onToolLongClick(it, tool)
                 true

@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/FirstFragment"
         android:name="com.example.norwinlabstools.FirstFragment"
-        android:label="@string/first_fragment_label"
+        android:label="NorwinLabs Tools"
         tools:layout="@layout/fragment_first">
 
         <action
@@ -17,6 +17,12 @@
         <action
             android:id="@+id/action_FirstFragment_to_SettingsFragment"
             app:destination="@id/SettingsFragment" />
+        <action
+            android:id="@+id/action_FirstFragment_to_HapticTesterFragment"
+            app:destination="@id/HapticTesterFragment" />
+        <action
+            android:id="@+id/action_FirstFragment_to_CalendarFragment"
+            app:destination="@id/CalendarFragment" />
     </fragment>
     
     <fragment
@@ -34,5 +40,17 @@
         android:name="com.example.norwinlabstools.SettingsFragment"
         android:label="@string/settings_fragment_label"
         tools:layout="@layout/fragment_settings" />
+
+    <fragment
+        android:id="@+id/HapticTesterFragment"
+        android:name="com.example.norwinlabstools.HapticTesterFragment"
+        android:label="Haptic Tester"
+        tools:layout="@layout/fragment_haptic_tester" />
+
+    <fragment
+        android:id="@+id/CalendarFragment"
+        android:name="com.example.norwinlabstools.CalendarFragment"
+        android:label="Calendar"
+        tools:layout="@layout/fragment_calendar" />
 
 </navigation>
