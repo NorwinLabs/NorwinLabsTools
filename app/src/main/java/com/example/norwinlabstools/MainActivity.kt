@@ -1,5 +1,7 @@
 package com.example.norwinlabstools
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
@@ -28,29 +30,11 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
+    }
 
-        binding.fab.setOnClickListener { view ->
-            val popup = PopupMenu(this, view)
-            popup.menuInflater.inflate(R.menu.fab_menu, popup.menu)
-            popup.setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    R.id.action_email -> {
-                        Snackbar.make(view, "Opening Email...", Snackbar.LENGTH_SHORT).show()
-                        true
-                    }
-                    R.id.action_feedback -> {
-                        Snackbar.make(view, "Opening Feedback...", Snackbar.LENGTH_SHORT).show()
-                        true
-                    }
-                    R.id.action_share -> {
-                        Snackbar.make(view, "Sharing App...", Snackbar.LENGTH_SHORT).show()
-                        true
-                    }
-                    else -> false
-                }
-            }
-            popup.show()
-        }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -60,11 +44,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
+        // Handle action bar item clicks here.
         return when (item.itemId) {
-            R.id.action_settings -> true
+            R.id.action_settings -> {
+                findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.action_FirstFragment_to_SettingsFragment)
+                true
+            }
+            R.id.action_windhelm -> {
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://windhelmthegame.ddns.net"))
+                startActivity(browserIntent)
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }

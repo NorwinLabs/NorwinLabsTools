@@ -75,19 +75,7 @@ class FirstFragment : Fragment() {
                 if (adapter.isEditMode) {
                     adapter.isEditMode = false
                 } else {
-                    // Navigate based on tool ID
-                    when(tool.id) {
-                        4 -> findNavController().navigate(R.id.action_FirstFragment_to_SettingsFragment)
-                        1 -> findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
-                        12 -> checkForUpdates()
-                        else -> {
-                             AlertDialog.Builder(requireContext())
-                                .setTitle(tool.name)
-                                .setMessage("${tool.name} module is coming soon!")
-                                .setPositiveButton("OK", null)
-                                .show()
-                        }
-                    }
+                    navigateToTool(tool.id)
                 }
             },
             onToolLongClick = { toolView, _ ->
@@ -133,6 +121,46 @@ class FirstFragment : Fragment() {
 
         setupFooter()
         autoCheckForUpdates()
+        
+        checkIntentAction()
+    }
+
+    private fun navigateToTool(id: Int) {
+        when(id) {
+            4 -> findNavController().navigate(R.id.action_FirstFragment_to_SettingsFragment)
+            1 -> findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
+            12 -> checkForUpdates()
+            else -> {
+                val tool = allTools.find { it.id == id }
+                AlertDialog.Builder(requireContext())
+                    .setTitle(tool?.name ?: "Tool")
+                    .setMessage("${tool?.name ?: "This"} module is coming soon!")
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun checkIntentAction() {
+        val intent = activity?.intent
+        val action = intent?.action ?: return
+        
+        when {
+            action == "OPEN_ADD_TOOLS_ACTION" -> showAddToolsBottomSheet()
+            action.startsWith("LAUNCH_TOOL_") -> {
+                val toolId = action.removePrefix("LAUNCH_TOOL_").toIntOrNull()
+                if (toolId != null) {
+                    navigateToTool(toolId)
+                }
+            }
+        }
+        // Clear action so it doesn't reopen on config change
+        intent.action = null
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkIntentAction()
     }
 
     private fun autoCheckForUpdates() {
