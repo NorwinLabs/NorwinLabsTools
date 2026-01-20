@@ -38,11 +38,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    // Add signing configuration for Release builds
     signingConfigs {
         create("release") {
-            // This is a temporary setup using debug credentials to ensure it installs
-            // You can replace these with secrets later
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
@@ -52,7 +49,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true // Enables R8 shrinking for smaller APKs
+            isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
@@ -61,7 +58,6 @@ android {
             )
         }
         debug {
-            // Ensure debug builds don't have testOnly=true for easier sharing
             isDebuggable = true
         }
     }
@@ -87,12 +83,15 @@ android {
     }
 }
 
+// Fixed for Configuration Cache: Using Provider/Property and explicit file paths
 tasks.register("incrementVersion") {
     group = "versioning"
+    val propsFile = versionPropsFile // Captured as a File object, which is serializable
+    
     doLast {
         val props = Properties()
-        if (versionPropsFile.exists()) {
-            versionPropsFile.inputStream().use { props.load(it) }
+        if (propsFile.exists()) {
+            propsFile.inputStream().use { props.load(it) }
         }
         val currentCode = props.getProperty("VERSION_CODE", "1").toInt()
         val nextCode = currentCode + 1
@@ -106,21 +105,26 @@ tasks.register("incrementVersion") {
             val nextName = parts.joinToString(".")
             props.setProperty("VERSION_NAME", nextName)
         }
-        versionPropsFile.outputStream().use { props.store(it, "Auto-incremented build version") }
+        propsFile.outputStream().use { props.store(it, "Auto-incremented build version") }
     }
 }
 
 tasks.register("createBuildInfo") {
     group = "build"
-    val releaseDirFile = rootProject.layout.projectDirectory.dir("releases").asFile
+    // Use Providers to avoid capturing project state directly
+    val verNameProvider = provider { verName }
+    val verCodeProvider = provider { verCode }
+    val releaseDir = rootProject.layout.projectDirectory.dir("releases")
+    
     doLast {
+        val releaseDirFile = releaseDir.asFile
         if (!releaseDirFile.exists()) releaseDirFile.mkdirs()
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         val infoFile = File(releaseDirFile, "latest-build-info.txt")
         infoFile.writeText("""
             NorwinLabsTools Build Information
-            Version Name: ${verName}
-            Build Number: ${verCode}
+            Version Name: ${verNameProvider.get()}
+            Build Number: ${verCodeProvider.get()}
             Build Date:   ${timestamp}
         """.trimIndent())
     }
