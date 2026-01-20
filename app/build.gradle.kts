@@ -159,7 +159,6 @@ dependencies {
     implementation(libs.glide)
     implementation(libs.generativeai)
     implementation(libs.androidx.biometric)
-    implementation(libs.clarity)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
