@@ -1,18 +1,24 @@
 package com.example.norwinlabstools
 
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
+import android.os.Environment
+import androidx.core.content.FileProvider
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.io.File
 
 class UpdateManager(private val context: Context) {
 
     private val client = OkHttpClient()
     
-    // Check if these match your GitHub URL exactly: https://github.com/OWNER/REPO
     private val GITHUB_OWNER = "NorwinLabs"
     private val GITHUB_REPO = "NorwinLabsTools"
-    
     private val GITHUB_API_URL = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 
     interface UpdateCallback {
@@ -31,7 +37,6 @@ class UpdateManager(private val context: Context) {
         Thread {
             try {
                 val response = client.newCall(request).execute()
-                val responseCode = response.code
                 val responseBody = response.body?.string()
 
                 if (response.isSuccessful && responseBody != null) {
@@ -55,12 +60,49 @@ class UpdateManager(private val context: Context) {
                         callback.onNoUpdate()
                     }
                 } else {
-                    callback.onError("GitHub returned $responseCode", GITHUB_API_URL)
+                    callback.onError("GitHub returned ${response.code}", GITHUB_API_URL)
                 }
             } catch (e: Exception) {
                 callback.onError("Network error: ${e.message}", GITHUB_API_URL)
             }
         }.start()
+    }
+
+    fun downloadAndInstallApk(url: String, fileName: String) {
+        val destination = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+        if (destination.exists()) destination.delete()
+
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setTitle("Downloading NorwinLabsTools Update")
+            .setDescription("Preparing to install version...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationUri(Uri.fromFile(destination))
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(true)
+
+        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val downloadId = downloadManager.enqueue(request)
+
+        val onComplete = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                if (id == downloadId) {
+                    installApk(destination)
+                    context.unregisterReceiver(this)
+                }
+            }
+        }
+        context.registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+    }
+
+    private fun installApk(file: File) {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
     }
 
     private fun getCurrentVersion(): String {

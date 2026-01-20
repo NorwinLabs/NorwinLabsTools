@@ -97,7 +97,29 @@ class FirstFragment : Fragment() {
                         4 -> findNavController().navigate(R.id.action_FirstFragment_to_SettingsFragment)
                         1 -> findNavController().navigate(R.id.action_FirstFragment_to_CalendarFragment)
                         9 -> showIdeaGenerator()
-                        12 -> checkForUpdates()
+                        12 -> {
+                            val updateManager = UpdateManager(requireContext())
+                            updateManager.checkForUpdates(object : UpdateManager.UpdateCallback {
+                                override fun onUpdateAvailable(latestVersion: String, downloadUrl: String) {
+                                    activity?.runOnUiThread {
+                                        AlertDialog.Builder(requireContext())
+                                            .setTitle("Update Available")
+                                            .setMessage("A new version ($latestVersion) is available. Download now?")
+                                            .setPositiveButton("Download") { _, _ ->
+                                                updateManager.downloadAndInstallApk(downloadUrl, "NorwinLabsTools-Update.apk")
+                                            }
+                                            .setNegativeButton("Later", null)
+                                            .show()
+                                    }
+                                }
+                                override fun onNoUpdate() {
+                                    activity?.runOnUiThread { Toast.makeText(requireContext(), "You are on the latest version", Toast.LENGTH_SHORT).show() }
+                                }
+                                override fun onError(error: String, url: String) {
+                                    activity?.runOnUiThread { Toast.makeText(requireContext(), "Update check failed: $error", Toast.LENGTH_LONG).show() }
+                                }
+                            })
+                        }
                         13 -> {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("http://windhelmthegame.ddns.net"))
                             startActivity(intent)
@@ -331,11 +353,7 @@ class FirstFragment : Fragment() {
                         .setTitle("Update Available")
                         .setMessage("A new version ($latestVersion) is available. Would you like to download it?")
                         .setPositiveButton("Download") { _, _ ->
-                            if (downloadUrl.isNotEmpty()) {
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
-                            } else {
-                                Toast.makeText(requireContext(), "Download URL not found", Toast.LENGTH_LONG).show()
-                            }
+                            updateManager.downloadAndInstallApk(downloadUrl, "NorwinLabsTools-Update.apk")
                         }
                         .setNegativeButton("Later", null)
                         .show()
