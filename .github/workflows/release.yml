@@ -44,8 +44,12 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build APK
-        run: ./gradlew assembleDebug
+      - name: Create Dummy Keystore
+        run: |
+          keytool -genkey -v -keystore app/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
 
       - name: Get Version Info
         id: get_version
@@ -64,6 +68,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

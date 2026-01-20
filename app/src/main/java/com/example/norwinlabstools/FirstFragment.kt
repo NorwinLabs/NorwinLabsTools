@@ -94,10 +94,13 @@ class FirstFragment : Fragment() {
 
         setupDragAndDrop()
 
-        val fab = activity?.findViewById<View>(R.id.fab)
-        fab?.setOnClickListener {
-            adapter.isEditMode = false
-            showAddToolsBottomSheet()
+        // Set FAB click listener
+        activity?.findViewById<View>(R.id.fab)?.setOnClickListener {
+            if (adapter.isEditMode) {
+                adapter.isEditMode = false
+            } else {
+                showAddToolsBottomSheet()
+            }
         }
 
         binding.layoutContainer.setOnTouchListener { _, event ->
@@ -161,6 +164,14 @@ class FirstFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        // Re-establish FAB listener just in case navigation cleared it
+        activity?.findViewById<View>(R.id.fab)?.setOnClickListener {
+            if (adapter.isEditMode) {
+                adapter.isEditMode = false
+            } else {
+                showAddToolsBottomSheet()
+            }
+        }
         checkIntentAction()
     }
 
@@ -322,7 +333,6 @@ class FirstFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        activity?.findViewById<View>(R.id.fab)?.setOnClickListener(null)
         _binding = null
     }
 }

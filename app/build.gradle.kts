@@ -10,7 +10,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-// 1. Versioning Logic: Read current values from version.properties
 val versionPropsFile = rootProject.file("version.properties")
 val versionProps = Properties()
 
@@ -23,7 +22,6 @@ if (versionPropsFile.exists()) {
 
 val verCode = versionProps["VERSION_CODE"].toString().toInt()
 val verName = versionProps["VERSION_NAME"].toString()
-// Include seconds (ss) to ensure every build gets a unique filename in the releases folder
 val buildTimestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).format(Date())
 
 android {
@@ -40,15 +38,34 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Add signing configuration for Release builds
+    signingConfigs {
+        create("release") {
+            // This is a temporary setup using debug credentials to ensure it installs
+            // You can replace these with secrets later
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true // Enables R8 shrinking for smaller APKs
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+        debug {
+            // Ensure debug builds don't have testOnly=true for easier sharing
+            isDebuggable = true
+        }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -60,30 +77,23 @@ android {
         viewBinding = true
     }
 
-    // 2. Custom APK Naming: Renames the output file to include version info, build number, and precise timestamp
     applicationVariants.all {
         val variant = this
         variant.outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val fileName = "NorwinLabsTools-v${variant.versionName}-b${variant.versionCode}-${variant.name}-$buildTimestamp.apk"
+            val fileName = "NorwinLabsTools-v${variant.versionName}-b${variant.versionCode}-${variant.name}.apk"
             output.outputFileName = fileName
         }
     }
 }
 
-// 3. Increment Task: Updates the version.properties file for the NEXT build
 tasks.register("incrementVersion") {
     group = "versioning"
-    description = "Increments the version code and name in version.properties"
-    
-    val propsFile = versionPropsFile
-    
     doLast {
         val props = Properties()
-        if (propsFile.exists()) {
-            propsFile.inputStream().use { props.load(it) }
+        if (versionPropsFile.exists()) {
+            versionPropsFile.inputStream().use { props.load(it) }
         }
-        
         val currentCode = props.getProperty("VERSION_CODE", "1").toInt()
         val nextCode = currentCode + 1
         props.setProperty("VERSION_CODE", nextCode.toString())
@@ -96,64 +106,39 @@ tasks.register("incrementVersion") {
             val nextName = parts.joinToString(".")
             props.setProperty("VERSION_NAME", nextName)
         }
-        
-        propsFile.outputStream().use { props.store(it, "Auto-incremented build version") }
-        println("Version incremented to ${props.getProperty("VERSION_NAME")} (Code: $nextCode)")
+        versionPropsFile.outputStream().use { props.store(it, "Auto-incremented build version") }
     }
 }
 
-// 4. Create Build Info Task: Generates a text file with build details
 tasks.register("createBuildInfo") {
     group = "build"
-    description = "Generates a build-info.txt file in the releases folder"
-    
     val releaseDirFile = rootProject.layout.projectDirectory.dir("releases").asFile
-    val currentVerName = verName
-    val currentVerCode = verCode
-    
     doLast {
         if (!releaseDirFile.exists()) releaseDirFile.mkdirs()
-        
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         val infoFile = File(releaseDirFile, "latest-build-info.txt")
-        
         infoFile.writeText("""
             NorwinLabsTools Build Information
-            --------------------------------
-            Version Name: ${currentVerName}
-            Build Number: ${currentVerCode}
+            Version Name: ${verName}
+            Build Number: ${verCode}
             Build Date:   ${timestamp}
-            Build Type:   Automated Internal Build
         """.trimIndent())
-        
-        println("Build info generated at: ${infoFile.absolutePath}")
     }
 }
 
-// 5. Copy Task: Moves built APKs to the top-level releases/ folder
 tasks.register<Copy>("copyApkToReleases") {
     group = "build"
-    description = "Copies the generated APKs to the project-level releases folder."
-    
-    // Use a broad search to ensure we catch APKs regardless of subfolder (debug/release)
     from(layout.buildDirectory.dir("outputs/apk"))
     into(rootProject.layout.projectDirectory.dir("releases"))
     include("**/*.apk")
     includeEmptyDirs = false
-    
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
-    
-    // Flatten directory structure so APKs land directly in /releases with their unique names
-    eachFile {
-        path = name
-    }
+    eachFile { path = name }
 }
 
-// 6. Automation Hook: Ensures incrementing happens before build and copying happens after
 tasks.configureEach {
     if (name.startsWith("assemble")) {
         dependsOn("incrementVersion")
-        // Create build info first, then copy everything to releases
         finalizedBy("createBuildInfo")
         finalizedBy("copyApkToReleases")
     }
