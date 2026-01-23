@@ -21,7 +21,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.norwinlabstools.databinding.FragmentNetScannerBinding
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -34,7 +38,8 @@ class NetScannerFragment : Fragment() {
     private lateinit var deviceAdapter: DeviceAdapter
     
     private var aiManager: SecurityAIManager? = null
-    private lateinit var wifiManager: WifiManager
+    private var wifiManager: WifiManager? = null
+    private val client = OkHttpClient()
 
     private val PREFS_NAME = "norwin_prefs"
     private val KEY_AI_ANALYSIS = "enable_ai_analysis"
@@ -83,7 +88,8 @@ class NetScannerFragment : Fragment() {
     private fun checkPermissionsAndStart() {
         val permissions = arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_NETWORK_STATE
         )
         
         if (permissions.all { ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED }) {
@@ -99,20 +105,57 @@ class NetScannerFragment : Fragment() {
         binding.scanProgress.visibility = View.VISIBLE
         binding.scanProgress.progress = 0
         binding.btnScan.isEnabled = false
-        binding.tvNetworkInfo.text = "Scanning Network & WiFi..."
+        binding.tvNetworkInfo.text = "Initializing Scan..."
 
-        // 1. Scan WiFi Signals
+        // 1. Run Speed Test
+        runSpeedTest()
+
+        // 2. Scan WiFi Signals
         scanWifiSignals()
 
-        // 2. Scan Local IP Devices
+        // 3. Scan Local IP Devices
         scanLocalNetwork()
     }
 
+    private fun runSpeedTest() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val startTime = System.currentTimeMillis()
+            var downloadedBytes = 0L
+            try {
+                // Fetch a small file to measure speed
+                val speedTestUrl = "https://speed.cloudflare.com/__down?bytes=1000000" // 1MB
+                val request = Request.Builder().url(speedTestUrl).build()
+                val response = client.newCall(request).execute()
+                
+                response.body?.byteStream()?.use { input ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        downloadedBytes += bytesRead
+                    }
+                }
+                
+                val endTime = System.currentTimeMillis()
+                val durationSeconds = (endTime - startTime) / 1000.0
+                val speedMbps = if (durationSeconds > 0) (downloadedBytes * 8 / 1000000.0) / durationSeconds else 0.0
+                
+                withContext(Dispatchers.Main) {
+                    binding.tvDownloadSpeed.text = "Download: ${String.format("%.2f", speedMbps)} Mbps"
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    binding.tvDownloadSpeed.text = "Download: Error"
+                }
+            }
+        }
+    }
+
     private fun scanWifiSignals() {
+        val context = context ?: return
         val wifiReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val results = if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                    wifiManager.scanResults
+                    wifiManager?.scanResults ?: emptyList()
                 } else emptyList()
                 
                 results.forEach { result ->
@@ -129,17 +172,17 @@ class NetScannerFragment : Fragment() {
                     }
                     
                     activity?.runOnUiThread {
-                        deviceList.add(0, device) // Put WiFi at top
+                        deviceList.add(0, device)
                         deviceAdapter.notifyItemInserted(0)
                         analyzeDeviceSecurity(device, listOf("WiFi Security: $security"))
                     }
                 }
-                requireContext().unregisterReceiver(this)
+                try { context.unregisterReceiver(this) } catch (e: Exception) {}
             }
         }
         
-        requireContext().registerReceiver(wifiReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
-        wifiManager.startScan()
+        ContextCompat.registerReceiver(context, wifiReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION), ContextCompat.RECEIVER_EXPORTED)
+        wifiManager?.startScan()
     }
 
     private fun getWifiSecurity(result: ScanResult): String {
@@ -153,43 +196,46 @@ class NetScannerFragment : Fragment() {
     }
 
     private fun scanLocalNetwork() {
-        Thread {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val subnet = getLocalSubnet()
                 if (subnet != null) {
+                    withContext(Dispatchers.Main) {
+                        binding.tvNetworkInfo.text = "Scanning subnet $subnet.x ..."
+                    }
                     for (i in 1..254) {
                         val testIp = "$subnet.$i"
                         if (isIpReachable(testIp)) {
                             val device = ScannedDevice(testIp)
-                            activity?.runOnUiThread {
+                            withContext(Dispatchers.Main) {
                                 deviceList.add(device)
                                 deviceAdapter.notifyItemInserted(deviceList.size - 1)
                             }
                             checkPortVulnerabilities(device)
                         }
-                        activity?.runOnUiThread {
+                        withContext(Dispatchers.Main) {
                             binding.scanProgress.progress = (i * 100 / 254)
                         }
                     }
                 }
             } catch (e: Exception) {
-                activity?.runOnUiThread {
+                withContext(Dispatchers.Main) {
                     binding.tvNetworkInfo.text = "Error: ${e.message}"
                 }
             } finally {
-                activity?.runOnUiThread {
+                withContext(Dispatchers.Main) {
                     binding.scanProgress.visibility = View.GONE
                     binding.btnScan.isEnabled = true
                     binding.tvNetworkInfo.text = "Scan complete. Found ${deviceList.size} items."
                 }
             }
-        }.start()
+        }
     }
 
     @RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
     private fun getLocalSubnet(): String? {
-        val connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val linkProperties = connectivityManager.getLinkProperties(connectivityManager.activeNetwork)
+        val connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val linkProperties = connectivityManager?.getLinkProperties(connectivityManager.activeNetwork)
         val ipAddress = linkProperties?.linkAddresses?.find { it.address.isSiteLocalAddress }?.address?.hostAddress
         return ipAddress?.substringBeforeLast(".")
     }
@@ -197,13 +243,13 @@ class NetScannerFragment : Fragment() {
     private fun isIpReachable(ip: String): Boolean {
         return try {
             val address = InetAddress.getByName(ip)
-            address.isReachable(500)
+            address.isReachable(300) // Lower timeout for faster scanning
         } catch (e: Exception) {
             false
         }
     }
 
-    private fun checkPortVulnerabilities(device: ScannedDevice) {
+    private suspend fun checkPortVulnerabilities(device: ScannedDevice) {
         val ports = mapOf(
             21 to "FTP (Plaintext)",
             22 to "SSH",
@@ -229,13 +275,14 @@ class NetScannerFragment : Fragment() {
             analyzeDeviceSecurity(device, openPortsList)
         }
 
-        activity?.runOnUiThread {
+        withContext(Dispatchers.Main) {
             deviceAdapter.notifyDataSetChanged()
         }
     }
 
     private fun analyzeDeviceSecurity(device: ScannedDevice, findings: List<String>) {
-        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val context = context ?: return
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val aiEnabled = prefs.getBoolean(KEY_AI_ANALYSIS, true)
         val apiKey = prefs.getString(KEY_API_KEY, "") ?: ""
 
@@ -266,7 +313,7 @@ class NetScannerFragment : Fragment() {
     private fun isPortOpen(ip: String, port: Int): Boolean {
         return try {
             val socket = Socket()
-            socket.connect(InetSocketAddress(ip, port), 200)
+            socket.connect(InetSocketAddress(ip, port), 150)
             socket.close()
             true
         } catch (e: Exception) {

@@ -10,18 +10,18 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-val versionPropsFile = rootProject.file("version.properties")
-val versionProps = Properties()
-
-if (versionPropsFile.exists()) {
-    versionProps.load(FileInputStream(versionPropsFile))
-} else {
-    versionProps["VERSION_CODE"] = "1"
-    versionProps["VERSION_NAME"] = "1.0.0"
+// Helper to read version properties safely
+fun getVersionProperty(key: String): String {
+    val props = Properties()
+    val propsFile = rootProject.file("version.properties")
+    if (propsFile.exists()) {
+        propsFile.inputStream().use { props.load(it) }
+    }
+    return props.getProperty(key, if (key == "VERSION_CODE") "1" else "1.0.0")
 }
 
-val verCode = versionProps["VERSION_CODE"].toString().toInt()
-val verName = versionProps["VERSION_NAME"].toString()
+val verCode = getVersionProperty("VERSION_CODE").toInt()
+val verName = getVersionProperty("VERSION_NAME")
 val buildTimestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).format(Date())
 
 android {
@@ -40,10 +40,13 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val keystoreFile = file("debug.keystore")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
 
@@ -58,7 +61,7 @@ android {
             )
         }
         debug {
-            isDebuggable = true
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -77,16 +80,16 @@ android {
         val variant = this
         variant.outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val fileName = "NorwinLabsTools-v${variant.versionName}-b${variant.versionCode}-${variant.name}.apk"
+            // Re-adding the timestamp to ensure every build is unique in /releases
+            val fileName = "NorwinLabsTools-v${variant.versionName}-b${variant.versionCode}-${variant.name}-$buildTimestamp.apk"
             output.outputFileName = fileName
         }
     }
 }
 
-// Fixed for Configuration Cache: Using Provider/Property and explicit file paths
 tasks.register("incrementVersion") {
     group = "versioning"
-    val propsFile = versionPropsFile // Captured as a File object, which is serializable
+    val propsFile = rootProject.file("version.properties")
     
     doLast {
         val props = Properties()
@@ -106,14 +109,12 @@ tasks.register("incrementVersion") {
             props.setProperty("VERSION_NAME", nextName)
         }
         propsFile.outputStream().use { props.store(it, "Auto-incremented build version") }
+        println("Version Incremented to: $nextCode")
     }
 }
 
 tasks.register("createBuildInfo") {
     group = "build"
-    // Use Providers to avoid capturing project state directly
-    val verNameProvider = provider { verName }
-    val verCodeProvider = provider { verCode }
     val releaseDir = rootProject.layout.projectDirectory.dir("releases")
     
     doLast {
@@ -123,8 +124,8 @@ tasks.register("createBuildInfo") {
         val infoFile = File(releaseDirFile, "latest-build-info.txt")
         infoFile.writeText("""
             NorwinLabsTools Build Information
-            Version Name: ${verNameProvider.get()}
-            Build Number: ${verCodeProvider.get()}
+            Version Name: ${getVersionProperty("VERSION_NAME")}
+            Build Number: ${getVersionProperty("VERSION_CODE")}
             Build Date:   ${timestamp}
         """.trimIndent())
     }
@@ -142,6 +143,7 @@ tasks.register<Copy>("copyApkToReleases") {
 
 tasks.configureEach {
     if (name.startsWith("assemble")) {
+        // Task dependency fix: increment version before starting assembly
         dependsOn("incrementVersion")
         finalizedBy("createBuildInfo")
         finalizedBy("copyApkToReleases")
