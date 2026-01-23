@@ -23,8 +23,8 @@ deploymentTargetDropDown.xml
 render.experimental.xml
 
 # Keystore files
-*.jks
-*.keystore
+# Commenting this out to allow syncing the debug key across PCs
+# *.keystore
 
 # Google Services (e.g. APIs or Firebase)
 google-services.json
