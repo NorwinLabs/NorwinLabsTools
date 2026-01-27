@@ -44,9 +44,7 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Create Dummy Keystore
-        run: |
-          keytool -genkey -v -keystore app/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+      # Removed Create Dummy Keystore - Using the keystore already in the repo for consistent signing
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
