@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.norwinlabstools.databinding.FragmentNetScannerBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -269,7 +270,11 @@ class NetScannerFragment : Fragment() {
         device.status = if (device.vulnerabilities.isEmpty()) "Secure" else "Potential Issues Found"
         if (openPortsList.isNotEmpty()) analyzeDeviceSecurity(device, openPortsList)
 
-        withContext(Dispatchers.Main) { _binding?.let { deviceAdapter.notifyDataSetChanged() } }
+        withContext(Dispatchers.Main) {
+            if (_binding != null) {
+                deviceAdapter.notifyDataSetChanged()
+            }
+        }
     }
 
     private fun analyzeDeviceSecurity(device: ScannedDevice, findings: List<String>) {
@@ -283,11 +288,19 @@ class NetScannerFragment : Fragment() {
                 aiManager?.analyzeVulnerabilities(device.ip, findings, object : SecurityAIManager.SecurityCallback {
                     override fun onSuccess(analysis: String) {
                         device.aiAnalysis = analysis
-                        activity?.runOnUiThread { _binding?.let { deviceAdapter.notifyDataSetChanged() } }
+                        activity?.runOnUiThread {
+                            if (_binding != null) {
+                                deviceAdapter.notifyDataSetChanged()
+                            }
+                        }
                     }
                     override fun onError(error: String) {
                         device.aiAnalysis = "AI Error: $error"
-                        activity?.runOnUiThread { _binding?.let { deviceAdapter.notifyDataSetChanged() } }
+                        activity?.runOnUiThread {
+                            if (_binding != null) {
+                                deviceAdapter.notifyDataSetChanged()
+                            }
+                        }
                     }
                 })
             }
@@ -305,5 +318,49 @@ class NetScannerFragment : Fragment() {
         }
     }
 
-    // ... (DeviceAdapter and ViewHolder remain the same)
+    inner class DeviceAdapter(private val devices: List<ScannedDevice>) :
+        RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+
+        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val tvTitle: android.widget.TextView = view.findViewById(android.R.id.text1)
+            val tvInfo: android.widget.TextView = view.findViewById(android.R.id.text2)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(android.R.layout.simple_list_item_2, parent, false)
+            return ViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val device = devices[position]
+
+            if (device.isWifi) {
+                holder.tvTitle.text = "📶 WiFi: ${device.ssid ?: \"Hidden Network\"}"
+                holder.tvTitle.setTextColor(0xFF2196F3.toInt())
+            } else {
+                holder.tvTitle.text = "💻 Device: ${device.ip}"
+                holder.tvTitle.setTextColor(0xFF000000.toInt())
+            }
+
+            val infoText = StringBuilder()
+            infoText.append(device.status)
+            if (device.vulnerabilities.isNotEmpty()) {
+                infoText.append("\nFindings: ").append(device.vulnerabilities.joinToString(", "))
+            }
+            if (device.aiAnalysis != null) {
+                infoText.append("\n\nAI Security Report: ").append(device.aiAnalysis)
+            }
+
+            holder.tvInfo.text = infoText.toString()
+            holder.tvInfo.setTextColor(if (device.vulnerabilities.isNotEmpty()) 0xFFFF5252.toInt() else 0xFF757575.toInt())
+        }
+
+        override fun getItemCount() = devices.size
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
 }
