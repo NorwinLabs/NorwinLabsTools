@@ -318,7 +318,7 @@ class NetScannerFragment : Fragment() {
         }
     }
 
-    inner class DeviceAdapter(private val devices: List<ScannedDevice>) :
+    class DeviceAdapter(private val devices: List<ScannedDevice>) :
         RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
 
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -336,7 +336,7 @@ class NetScannerFragment : Fragment() {
             val device = devices[position]
 
             if (device.isWifi) {
-                holder.tvTitle.text = "📶 WiFi: ${device.ssid ?: \"Hidden Network\"}"
+                holder.tvTitle.text = "📶 WiFi: ${device.ssid ?: "Hidden Network"}"
                 holder.tvTitle.setTextColor(0xFF2196F3.toInt())
             } else {
                 holder.tvTitle.text = "💻 Device: ${device.ip}"
