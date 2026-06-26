@@ -132,9 +132,9 @@ tasks.register("createBuildInfo") {
         val infoFile = File(releaseDirFile, "latest-build-info.txt")
         infoFile.writeText("""
             NorwinLabsTools Build Information
-            Version Name: ${"$"}vName
-            Build Number: ${"$"}vCode
-            Build Date:   ${"$"}timestamp
+            Version Name: ${"$"}${"{"}vName${"}"}
+            Build Number: ${"$"}${"{"}vCode${"}"}
+            Build Date:   ${"$"}${"{"}timestamp${"}"}
         """.trimIndent())
     }
 }
@@ -173,6 +173,9 @@ dependencies {
     
     // Firebase
     implementation(libs.firebase.database)
+
+    // Nearby Connections (P2P)
+    implementation(libs.play.services.nearby)
 
     // Image Cropping
     implementation(libs.ucrop)

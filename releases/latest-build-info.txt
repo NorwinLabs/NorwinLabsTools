@@ -1,4 +1,4 @@
 NorwinLabsTools Build Information
-Version Name: $vName
-Build Number: $vCode
-Build Date:   $timestamp
+Version Name: ${vName}
+Build Number: ${vCode}
+Build Date:   ${timestamp}

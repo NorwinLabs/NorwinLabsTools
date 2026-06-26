@@ -30,6 +30,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.norwinlabstools.databinding.FragmentLocationSharingBinding
 import com.example.norwinlabstools.databinding.ItemCircleMemberBinding
+import com.google.android.gms.nearby.Nearby
+import com.google.android.gms.nearby.connection.*
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.database.*
 import com.yalantis.ucrop.UCrop
@@ -61,6 +63,12 @@ class CircleShareFragment : Fragment() {
     
     private var isSatellite = false
     private var isDarkMode = false
+
+    // P2P (Nearby Connections)
+    private lateinit var connectionsClient: ConnectionsClient
+    private val STRATEGY = Strategy.P2P_CLUSTER
+    private val SERVICE_ID = "com.example.norwinlabstools.CIRCLE_SHARE"
+    private val activeConnections = mutableSetOf<String>()
 
     private val PREFS_NAME = "circle_prefs"
     private val KEY_CIRCLE_ID = "current_circle_id"
@@ -109,6 +117,9 @@ class CircleShareFragment : Fragment() {
                     child("lastUpdated").setValue(System.currentTimeMillis())
                 }
             }
+            
+            // Send P2P update if connected
+            broadcastLocationP2P(location)
         }
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         override fun onProviderEnabled(provider: String) {}
@@ -123,6 +134,7 @@ class CircleShareFragment : Fragment() {
         Configuration.getInstance().userAgentValue = requireContext().packageName
 
         _binding = FragmentLocationSharingBinding.inflate(inflater, container, false)
+        connectionsClient = Nearby.getConnectionsClient(requireActivity())
         return binding.root
     }
 
@@ -190,10 +202,8 @@ class CircleShareFragment : Fragment() {
         isSatellite = !isSatellite
         if (isSatellite) {
             binding.mapView.setTileSource(TileSourceFactory.USGS_SAT)
-            binding.fabToggleSatellite.setImageResource(android.R.drawable.ic_menu_mapmode)
         } else {
             binding.mapView.setTileSource(TileSourceFactory.MAPNIK)
-            binding.fabToggleSatellite.setImageResource(android.R.drawable.ic_menu_mapmode)
         }
         updateMapTheme()
     }
@@ -382,6 +392,7 @@ class CircleShareFragment : Fragment() {
         database?.child("circles")?.child(circleId)?.child("admin")?.addValueEventListener(adminValueListener)
         
         syncProfileToFirebase()
+        startP2P()
         
         if (!isAutoJoin) {
             Toast.makeText(context, "Joined circle $circleId", Toast.LENGTH_SHORT).show()
@@ -438,6 +449,7 @@ class CircleShareFragment : Fragment() {
     }
 
     private fun leaveCircle() {
+        stopP2P()
         currentCircleId = null
         isAdmin = false
         requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().remove(KEY_CIRCLE_ID).apply()
@@ -495,23 +507,39 @@ class CircleShareFragment : Fragment() {
         val recycler = root.findViewById<RecyclerView>(R.id.recyclerview_available_tools)
         recycler.layoutManager = LinearLayoutManager(context)
         
-        database?.child("circles")?.child(currentCircleId!!)?.child("members")?.get()?.addOnSuccessListener { snapshot ->
-            val members = mutableListOf<CircleMember>()
-            snapshot.children.forEach { child ->
-                val member = CircleMember(
-                    id = child.key ?: "",
-                    name = child.child("name").getValue(String::class.java) ?: "User",
-                    photoBase64 = child.child("photo").getValue(String::class.java)
-                )
-                members.add(member)
+        // Use a live listener for the member list to ensure it's always accurate
+        val membersListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val members = mutableListOf<CircleMember>()
+                snapshot.children.forEach { child ->
+                    val member = CircleMember(
+                        id = child.key ?: "",
+                        name = child.child("name").getValue(String::class.java) ?: "User",
+                        photoBase64 = child.child("photo").getValue(String::class.java)
+                    )
+                    members.add(member)
+                }
+                
+                if (recycler.adapter == null) {
+                    recycler.adapter = MemberAdapter(members, isAdmin, userId) { memberId ->
+                        removeMember(memberId)
+                    }
+                } else {
+                    (recycler.adapter as MemberAdapter).updateMembers(members)
+                }
             }
-            recycler.adapter = MemberAdapter(members, isAdmin, userId) { memberId ->
-                removeMember(memberId)
-                dialog.dismiss()
-            }
-            dialog.setContentView(root)
-            dialog.show()
+            override fun onCancelled(error: DatabaseError) {}
         }
+
+        val membersRef = database?.child("circles")?.child(currentCircleId!!)?.child("members")
+        membersRef?.addValueEventListener(membersListener)
+
+        dialog.setOnDismissListener {
+            membersRef?.removeEventListener(membersListener)
+        }
+
+        dialog.setContentView(root)
+        dialog.show()
     }
 
     private fun removeMember(memberId: String) {
@@ -537,15 +565,100 @@ class CircleShareFragment : Fragment() {
     }
 
     private fun checkLocationPermissions() {
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1001)
+        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
         }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+             permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+
+        val missing = permissions.filter { ActivityCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED }
+        if (missing.isNotEmpty()) {
+            requestPermissions(missing.toTypedArray(), 1001)
+        }
+    }
+
+    // --- P2P Nearby Connections ---
+
+    private fun startP2P() {
+        if (currentCircleId == null) return
+        
+        val endpointName = "${userId}|${myName}"
+        
+        val advertisingOptions = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
+        connectionsClient.startAdvertising(endpointName, currentCircleId!!, connectionLifecycleCallback, advertisingOptions)
+            .addOnFailureListener { e -> /* Handle error */ }
+
+        val discoveryOptions = DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
+        connectionsClient.startDiscovery(currentCircleId!!, endpointDiscoveryCallback, discoveryOptions)
+            .addOnFailureListener { e -> /* Handle error */ }
+    }
+
+    private fun stopP2P() {
+        connectionsClient.stopAdvertising()
+        connectionsClient.stopDiscovery()
+        connectionsClient.stopAllEndpoints()
+        activeConnections.clear()
+    }
+
+    private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
+        override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
+            connectionsClient.requestConnection(userId, endpointId, connectionLifecycleCallback)
+        }
+        override fun onEndpointLost(endpointId: String) {}
+    }
+
+    private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
+        override fun onConnectionInitiated(endpointId: String, connectionInfo: ConnectionInfo) {
+            connectionsClient.acceptConnection(endpointId, payloadCallback)
+        }
+
+        override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
+            if (result.status.isSuccess) {
+                activeConnections.add(endpointId)
+                // Send initial location
+                locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let { broadcastLocationP2P(it) }
+            }
+        }
+
+        override fun onDisconnected(endpointId: String) {
+            activeConnections.remove(endpointId)
+        }
+    }
+
+    private val payloadCallback = object : PayloadCallback() {
+        override fun onPayloadReceived(endpointId: String, payload: Payload) {
+            if (payload.type == Payload.Type.BYTES) {
+                val data = String(payload.asBytes()!!)
+                val parts = data.split(",")
+                if (parts.size >= 4 && parts[0] == "LOC") {
+                    val id = parts[1]
+                    val name = parts[2]
+                    val lat = parts[3].toDoubleOrNull() ?: 0.0
+                    val lng = parts[4].toDoubleOrNull() ?: 0.0
+                    activity?.runOnUiThread {
+                        updateMarker(id, GeoPoint(lat, lng), isMe = false, name = name, photoBase64 = null)
+                    }
+                }
+            }
+        }
+        override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {}
+    }
+
+    private fun broadcastLocationP2P(location: Location) {
+        if (activeConnections.isEmpty()) return
+        val data = "LOC,${userId},${myName},${location.latitude},${location.longitude}"
+        val payload = Payload.fromBytes(data.toByteArray())
+        connectionsClient.sendPayload(activeConnections.toList(), payload)
     }
 
     data class CircleMember(val id: String, val name: String, val photoBase64: String?)
 
     class MemberAdapter(
-        private val members: List<CircleMember>,
+        private var members: List<CircleMember>,
         private val isAdmin: Boolean,
         private val currentUserId: String,
         private val onRemove: (String) -> Unit
@@ -558,6 +671,12 @@ class CircleShareFragment : Fragment() {
             return ViewHolder(binding)
         }
 
+        @SuppressLint("NotifyDataSetChanged")
+        fun updateMembers(newMembers: List<CircleMember>) {
+            this.members = newMembers
+            notifyDataSetChanged()
+        }
+
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val member = members[position]
             holder.binding.tvMemberId.text = if (member.id == currentUserId) "${member.name} (You)" else member.name
@@ -566,6 +685,8 @@ class CircleShareFragment : Fragment() {
                 val decodedString = Base64.decode(it, Base64.DEFAULT)
                 val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
                 holder.binding.ivMemberAvatar.setImageBitmap(decodedByte)
+            } ?: run {
+                holder.binding.ivMemberAvatar.setImageResource(android.R.drawable.ic_menu_myplaces)
             }
 
             if (isAdmin && member.id != currentUserId) {
@@ -583,6 +704,7 @@ class CircleShareFragment : Fragment() {
     override fun onPause() { super.onPause(); binding.mapView.onPause() }
     override fun onDestroyView() {
         super.onDestroyView()
+        stopP2P()
         locationManager.removeUpdates(locationListener)
         _binding = null
     }
