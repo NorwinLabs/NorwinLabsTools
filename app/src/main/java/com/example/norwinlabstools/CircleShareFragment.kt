@@ -678,6 +678,7 @@ class CircleShareFragment : Fragment() {
             connectionsClient.acceptConnection(endpointId, payloadCallback)
         }
 
+        @SuppressLint("MissingPermission")
         override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
             if (result.status.isSuccess) {
                 activeConnections.add(endpointId)
