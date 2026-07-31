@@ -60,7 +60,8 @@ class CircleShareFragment : Fragment() {
     private var myName: String = "User"
     private var myPhotoBase64: String? = null
     private var isMapCentered = false
-    
+    private var hasSeenSelfInCircle = false
+
     private var isSatellite = false
     private var isDarkMode = false
 
@@ -69,6 +70,10 @@ class CircleShareFragment : Fragment() {
     private val STRATEGY = Strategy.P2P_CLUSTER
     private val SERVICE_ID = "com.example.norwinlabstools.CIRCLE_SHARE"
     private val activeConnections = mutableSetOf<String>()
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
+    }
 
     private val PREFS_NAME = "circle_prefs"
     private val KEY_CIRCLE_ID = "current_circle_id"
@@ -177,6 +182,10 @@ class CircleShareFragment : Fragment() {
 
         binding.btnViewMembers.setOnClickListener {
             showMembersSheet()
+        }
+
+        binding.btnShareCode.setOnClickListener {
+            shareCircleCode()
         }
 
         binding.fabCenterOnMe.setOnClickListener {
@@ -366,23 +375,24 @@ class CircleShareFragment : Fragment() {
     }
 
     private fun createCircle(circleId: String) {
-        initDatabase()
+        if (!initDatabase()) return
         isAdmin = true
         database?.child("circles")?.child(circleId)?.child("admin")?.setValue(userId)
         joinCircle(circleId)
     }
 
     private fun joinCircle(circleId: String, isAutoJoin: Boolean = false) {
-        initDatabase()
-        
+        if (!initDatabase()) return
+
         currentCircleId?.let { oldId ->
             database?.child("circles")?.child(oldId)?.child("members")?.removeEventListener(circleValueListener)
             database?.child("circles")?.child(oldId)?.child("admin")?.removeEventListener(adminValueListener)
         }
 
         currentCircleId = circleId
+        hasSeenSelfInCircle = false
         requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString(KEY_CIRCLE_ID, circleId).apply()
-        
+
         binding.tvCircleStatus.text = "Circle: $circleId"
         binding.btnViewMembers.visibility = View.VISIBLE
         binding.btnShareCode.visibility = View.VISIBLE
@@ -399,12 +409,16 @@ class CircleShareFragment : Fragment() {
         }
     }
 
-    private fun initDatabase() {
+    private fun initDatabase(): Boolean {
         if (database == null) {
             try {
                 database = FirebaseDatabase.getInstance().reference
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                Toast.makeText(context, "Cloud sync unavailable: ${e.message}", Toast.LENGTH_LONG).show()
+                return false
+            }
         }
+        return true
     }
 
     private val adminValueListener = object : ValueEventListener {
@@ -417,7 +431,12 @@ class CircleShareFragment : Fragment() {
 
     private val circleValueListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            if (!snapshot.hasChild(userId) && !isAdmin && currentCircleId != null) {
+            // Right after joining, our own member entry hasn't reached the server yet, so the
+            // first snapshot(s) may not contain us. Only treat "not present" as a kick once we've
+            // actually observed ourselves as a member at least once.
+            if (snapshot.hasChild(userId)) {
+                hasSeenSelfInCircle = true
+            } else if (hasSeenSelfInCircle && !isAdmin && currentCircleId != null) {
                 leaveCircle()
                 return
             }
@@ -452,6 +471,7 @@ class CircleShareFragment : Fragment() {
         stopP2P()
         currentCircleId = null
         isAdmin = false
+        hasSeenSelfInCircle = false
         requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().remove(KEY_CIRCLE_ID).apply()
         
         binding.tvCircleStatus.text = "Join or Create a Circle"
@@ -496,6 +516,15 @@ class CircleShareFragment : Fragment() {
         binding.mapView.invalidate()
     }
 
+    private fun shareCircleCode() {
+        val circleId = currentCircleId ?: return
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, "Join my Circle on NorwinLabsTools so we can share locations! Code: $circleId")
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share Circle Code"))
+    }
+
     private fun showMembersSheet() {
         if (currentCircleId == null) return
         val dialog = BottomSheetDialog(requireContext())
@@ -515,7 +544,8 @@ class CircleShareFragment : Fragment() {
                     val member = CircleMember(
                         id = child.key ?: "",
                         name = child.child("name").getValue(String::class.java) ?: "User",
-                        photoBase64 = child.child("photo").getValue(String::class.java)
+                        photoBase64 = child.child("photo").getValue(String::class.java),
+                        lastUpdated = child.child("lastUpdated").getValue(Long::class.java) ?: 0L
                     )
                     members.add(member)
                 }
@@ -577,7 +607,23 @@ class CircleShareFragment : Fragment() {
 
         val missing = permissions.filter { ActivityCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isNotEmpty()) {
-            requestPermissions(missing.toTypedArray(), 1001)
+            requestPermissions(missing.toTypedArray(), LOCATION_PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != LOCATION_PERMISSION_REQUEST_CODE) return
+
+        val fineLocationIndex = permissions.indexOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        val fineLocationGranted = fineLocationIndex >= 0 && grantResults.getOrNull(fineLocationIndex) == PackageManager.PERMISSION_GRANTED
+        if (fineLocationGranted) {
+            startLocationUpdates()
+            centerOnLastKnownLocation()
+        }
+        // Retry P2P advertising/discovery in case Bluetooth/Nearby permissions were just granted.
+        if (currentCircleId != null) {
+            startP2P()
         }
     }
 
@@ -634,7 +680,7 @@ class CircleShareFragment : Fragment() {
             if (payload.type == Payload.Type.BYTES) {
                 val data = String(payload.asBytes()!!)
                 val parts = data.split(",")
-                if (parts.size >= 4 && parts[0] == "LOC") {
+                if (parts.size >= 5 && parts[0] == "LOC") {
                     val id = parts[1]
                     val name = parts[2]
                     val lat = parts[3].toDoubleOrNull() ?: 0.0
@@ -650,12 +696,18 @@ class CircleShareFragment : Fragment() {
 
     private fun broadcastLocationP2P(location: Location) {
         if (activeConnections.isEmpty()) return
-        val data = "LOC,${userId},${myName},${location.latitude},${location.longitude}"
+        val safeName = myName.replace(",", " ")
+        val data = "LOC,${userId},${safeName},${location.latitude},${location.longitude}"
         val payload = Payload.fromBytes(data.toByteArray())
         connectionsClient.sendPayload(activeConnections.toList(), payload)
     }
 
-    data class CircleMember(val id: String, val name: String, val photoBase64: String?)
+    data class CircleMember(
+        val id: String,
+        val name: String,
+        val photoBase64: String?,
+        val lastUpdated: Long = 0L
+    )
 
     class MemberAdapter(
         private var members: List<CircleMember>,
@@ -689,6 +741,8 @@ class CircleShareFragment : Fragment() {
                 holder.binding.ivMemberAvatar.setImageResource(android.R.drawable.ic_menu_myplaces)
             }
 
+            holder.binding.tvMemberStatus.text = statusText(member.lastUpdated)
+
             if (isAdmin && member.id != currentUserId) {
                 holder.binding.btnRemoveMember.visibility = View.VISIBLE
                 holder.binding.btnRemoveMember.setOnClickListener { onRemove(member.id) }
@@ -698,6 +752,17 @@ class CircleShareFragment : Fragment() {
         }
 
         override fun getItemCount() = members.size
+
+        private fun statusText(lastUpdated: Long): String {
+            if (lastUpdated <= 0L) return "Location unknown"
+            val minutesAgo = (System.currentTimeMillis() - lastUpdated) / 60000
+            return when {
+                minutesAgo < 2 -> "Online"
+                minutesAgo < 60 -> "Last seen ${minutesAgo}m ago"
+                minutesAgo < 1440 -> "Last seen ${minutesAgo / 60}h ago"
+                else -> "Last seen ${minutesAgo / 1440}d ago"
+            }
+        }
     }
 
     override fun onResume() { super.onResume(); binding.mapView.onResume() }
