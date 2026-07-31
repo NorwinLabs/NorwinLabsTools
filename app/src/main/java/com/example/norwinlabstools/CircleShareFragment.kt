@@ -37,7 +37,6 @@ import com.google.firebase.database.*
 import com.yalantis.ucrop.UCrop
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.TilesOverlay
@@ -74,21 +73,6 @@ class CircleShareFragment : Fragment() {
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
-
-        // OpenStreetMap's raw tile.openstreetmap.org endpoint (TileSourceFactory.MAPNIK) actively
-        // blocks apps that hit it directly without following its production-usage policy
-        // (osm.wiki/Blocked). CARTO's free basemap tiles are policy-compliant for this kind of
-        // moderate, non-commercial usage and use OSM data/attribution underneath.
-        private val DEFAULT_TILE_SOURCE = XYTileSource(
-            "CartoVoyager",
-            0, 20, 256, ".png",
-            arrayOf(
-                "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
-                "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
-                "https://c.basemaps.cartocdn.com/rastertiles/voyager/",
-                "https://d.basemaps.cartocdn.com/rastertiles/voyager/"
-            )
-        )
     }
 
     private val PREFS_NAME = "circle_prefs"
@@ -228,7 +212,7 @@ class CircleShareFragment : Fragment() {
         if (isSatellite) {
             binding.mapView.setTileSource(TileSourceFactory.USGS_SAT)
         } else {
-            binding.mapView.setTileSource(DEFAULT_TILE_SOURCE)
+            binding.mapView.setTileSource(MapTileSources.DEFAULT)
         }
         updateMapTheme()
     }
@@ -379,7 +363,7 @@ class CircleShareFragment : Fragment() {
     }
 
     private fun setupMap() {
-        binding.mapView.setTileSource(DEFAULT_TILE_SOURCE)
+        binding.mapView.setTileSource(MapTileSources.DEFAULT)
         binding.mapView.setMultiTouchControls(true)
         
         val rotationGestureOverlay = RotationGestureOverlay(binding.mapView)

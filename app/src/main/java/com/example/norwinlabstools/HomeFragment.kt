@@ -57,7 +57,8 @@ class HomeFragment : Fragment() {
         Tool(24, "Budget", android.R.drawable.ic_menu_save, "1.0.0", 0xFF4CAF50.toInt(), "https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=500&auto=format&fit=crop"),
         Tool(25, "System Dash", android.R.drawable.ic_menu_info_details, "1.0.0", 0xFF607D8B.toInt(), "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=500&auto=format&fit=crop"),
         Tool(26, "Port Scanner", android.R.drawable.ic_menu_compass, "1.0.0", 0xFF3F51B5.toInt(), "https://images.unsplash.com/photo-1558494949-ef010ca73324?q=80&w=500&auto=format&fit=crop"),
-        Tool(27, "Circle Share", android.R.drawable.ic_menu_share, "1.0.0", 0xFF2196F3.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop")
+        Tool(27, "Circle Share", android.R.drawable.ic_menu_share, "1.0.0", 0xFF2196F3.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop"),
+        Tool(28, "Data Centers", android.R.drawable.ic_menu_mapmode, "1.0.0", 0xFF00838F.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop")
     )
 
     private var currentTools = mutableListOf<Tool>()
@@ -119,6 +120,7 @@ class HomeFragment : Fragment() {
                         25 -> findNavController().navigate(R.id.action_HomeFragment_to_SystemDashboardFragment)
                         26 -> findNavController().navigate(R.id.action_HomeFragment_to_PortScannerFragment)
                         27 -> findNavController().navigate(R.id.action_HomeFragment_to_CircleShareFragment)
+                        28 -> findNavController().navigate(R.id.action_HomeFragment_to_DataCenterMapFragment)
                         else -> {
                              AlertDialog.Builder(requireContext())
                                 .setTitle(tool.name)

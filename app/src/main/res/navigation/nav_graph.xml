@@ -44,6 +44,9 @@
         <action
             android:id="@+id/action_HomeFragment_to_CircleShareFragment"
             app:destination="@id/CircleShareFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_DataCenterMapFragment"
+            app:destination="@id/DataCenterMapFragment" />
     </fragment>
     
     <fragment
@@ -115,5 +118,11 @@
         android:name="com.example.norwinlabstools.CircleShareFragment"
         android:label="Circle Share"
         tools:layout="@layout/fragment_location_sharing" />
+
+    <fragment
+        android:id="@+id/DataCenterMapFragment"
+        android:name="com.example.norwinlabstools.DataCenterMapFragment"
+        android:label="Data Centers"
+        tools:layout="@layout/fragment_data_center_map" />
 
 </navigation>
