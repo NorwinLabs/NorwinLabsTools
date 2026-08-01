@@ -47,6 +47,9 @@
         <action
             android:id="@+id/action_HomeFragment_to_DataCenterMapFragment"
             app:destination="@id/DataCenterMapFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_FlockCameraMapFragment"
+            app:destination="@id/FlockCameraMapFragment" />
     </fragment>
     
     <fragment
@@ -124,5 +127,11 @@
         android:name="com.example.norwinlabstools.DataCenterMapFragment"
         android:label="Data Centers"
         tools:layout="@layout/fragment_data_center_map" />
+
+    <fragment
+        android:id="@+id/FlockCameraMapFragment"
+        android:name="com.example.norwinlabstools.FlockCameraMapFragment"
+        android:label="Flock Cameras"
+        tools:layout="@layout/fragment_flock_camera_map" />
 
 </navigation>
