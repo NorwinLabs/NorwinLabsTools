@@ -44,6 +44,12 @@
         <action
             android:id="@+id/action_HomeFragment_to_CircleShareFragment"
             app:destination="@id/CircleShareFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_DataCenterMapFragment"
+            app:destination="@id/DataCenterMapFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_FlockCameraMapFragment"
+            app:destination="@id/FlockCameraMapFragment" />
     </fragment>
     
     <fragment
@@ -114,6 +120,25 @@
         android:id="@+id/CircleShareFragment"
         android:name="com.example.norwinlabstools.CircleShareFragment"
         android:label="Circle Share"
-        tools:layout="@layout/fragment_location_sharing" />
+        tools:layout="@layout/fragment_location_sharing">
+        <argument
+            android:name="code"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+        <deepLink app:uri="norwinlabstools://join?code={code}" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/DataCenterMapFragment"
+        android:name="com.example.norwinlabstools.DataCenterMapFragment"
+        android:label="Data Centers"
+        tools:layout="@layout/fragment_data_center_map" />
+
+    <fragment
+        android:id="@+id/FlockCameraMapFragment"
+        android:name="com.example.norwinlabstools.FlockCameraMapFragment"
+        android:label="Flock Cameras"
+        tools:layout="@layout/fragment_flock_camera_map" />
 
 </navigation>

@@ -44,6 +44,14 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Circle Share join links, e.g. norwinlabstools://join?code=123456 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="norwinlabstools" android:host="join" />
+            </intent-filter>
         </activity>
 
         <activity
