@@ -21,6 +21,7 @@ playServicesMaps = "20.0.0"
 firebaseDatabase = "21.0.0"
 osmdroid = "6.1.20"
 ucrop = "2.2.11"
+jsch = "0.1.55"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,6 +44,7 @@ play-services-maps = { group = "com.google.android.gms", name = "play-services-m
 firebase-database = { group = "com.google.firebase", name = "firebase-database-ktx", version.ref = "firebaseDatabase" }
 osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 ucrop = { group = "com.github.yalantis", name = "ucrop", version.ref = "ucrop" }
+jsch = { group = "com.jcraft", name = "jsch", version.ref = "jsch" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

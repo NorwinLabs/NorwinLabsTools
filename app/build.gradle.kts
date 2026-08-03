@@ -180,6 +180,9 @@ dependencies {
     // Image Cropping
     implementation(libs.ucrop)
 
+    // SSH Client
+    implementation(libs.jsch)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

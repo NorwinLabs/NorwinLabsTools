@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.action_windhelm -> {
-                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://windhelmthegame.ddns.net"))
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://windhelm.dev"))
                 startActivity(browserIntent)
                 true
             }

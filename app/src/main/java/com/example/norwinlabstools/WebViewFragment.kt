@@ -73,7 +73,7 @@ class WebViewFragment : Fragment() {
                 }
             }
             
-            loadUrl("http://windhelmthegame.ddns.net")
+            loadUrl("https://windhelm.dev")
         }
     }
 

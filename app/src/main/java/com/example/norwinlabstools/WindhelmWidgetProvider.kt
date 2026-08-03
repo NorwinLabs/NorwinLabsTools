@@ -20,7 +20,7 @@ class WindhelmWidgetProvider : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.windhelm_widget)
 
         // Main action: Open Windhelm Website
-        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://windhelmthegame.ddns.net"))
+        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://windhelm.dev"))
         val webPendingIntent = PendingIntent.getActivity(context, 0, webIntent, PendingIntent.FLAG_IMMUTABLE)
         views.setOnClickPendingIntent(R.id.widget_main_action, webPendingIntent)
 
