@@ -120,7 +120,14 @@
         android:id="@+id/CircleShareFragment"
         android:name="com.example.norwinlabstools.CircleShareFragment"
         android:label="Circle Share"
-        tools:layout="@layout/fragment_location_sharing" />
+        tools:layout="@layout/fragment_location_sharing">
+        <argument
+            android:name="code"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+        <deepLink app:uri="norwinlabstools://join?code={code}" />
+    </fragment>
 
     <fragment
         android:id="@+id/DataCenterMapFragment"

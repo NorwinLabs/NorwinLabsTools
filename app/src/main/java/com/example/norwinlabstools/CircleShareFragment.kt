@@ -203,8 +203,13 @@ class CircleShareFragment : Fragment() {
         checkLocationPermissions()
         startLocationUpdates()
         centerOnLastKnownLocation()
-        
-        currentCircleId?.let { joinCircle(it, isAutoJoin = true) }
+
+        val deepLinkCode = arguments?.getString("code")
+        if (!deepLinkCode.isNullOrBlank() && deepLinkCode.length == 6) {
+            joinCircle(deepLinkCode)
+        } else {
+            currentCircleId?.let { joinCircle(it, isAutoJoin = true) }
+        }
     }
 
     private fun toggleSatellite() {
@@ -446,9 +451,12 @@ class CircleShareFragment : Fragment() {
                 val id = child.key ?: return@forEach
                 currentMemberIds.add(id)
                 if (id == userId) return@forEach
-                
-                val lat = child.child("lat").getValue(Double::class.java) ?: 0.0
-                val lng = child.child("lng").getValue(Double::class.java) ?: 0.0
+
+                // A member who hasn't gotten a location fix yet has no lat/lng written at all.
+                // Defaulting those to 0.0 used to pin them at Null Island instead of just not
+                // showing a marker until a real position arrives.
+                val lat = child.child("lat").getValue(Double::class.java) ?: return@forEach
+                val lng = child.child("lng").getValue(Double::class.java) ?: return@forEach
                 val name = child.child("name").getValue(String::class.java) ?: "User $id"
                 val photo = child.child("photo").getValue(String::class.java)
                 updateMarker(id, GeoPoint(lat, lng), isMe = false, name = name, photoBase64 = photo)
@@ -518,9 +526,13 @@ class CircleShareFragment : Fragment() {
 
     private fun shareCircleCode() {
         val circleId = currentCircleId ?: return
+        val joinUrl = "norwinlabstools://join?code=$circleId"
+        val shareText = "Join my Circle on NorwinLabsTools so we can share locations!\n\n" +
+            "Tap to join: $joinUrl\n\n" +
+            "Or open the app and enter this code: $circleId"
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "Join my Circle on NorwinLabsTools so we can share locations! Code: $circleId")
+            putExtra(Intent.EXTRA_TEXT, shareText)
         }
         startActivity(Intent.createChooser(shareIntent, "Share Circle Code"))
     }

@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        findNavController(R.id.nav_host_fragment_content_main).handleDeepLink(intent)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
