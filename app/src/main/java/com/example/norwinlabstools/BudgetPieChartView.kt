@@ -6,7 +6,6 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import java.util.UUID
 
 class BudgetPieChartView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -61,21 +60,5 @@ class BudgetPieChartView @JvmOverloads constructor(
 data class BudgetCategory(
     val name: String,
     val amount: Double,
-    val color: Int
-)
-
-data class BudgetTransaction(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val amount: Double,
-    val categoryName: String,
-    val date: Long = System.currentTimeMillis()
-)
-
-data class SavingsGoal(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val targetAmount: Double,
-    val currentAmount: Double,
     val color: Int
 )

@@ -134,6 +134,19 @@
             app:layout_constraintTop_toBottomOf="@id/layout_widgets"
             tools:listitem="@layout/item_tool" />
 
+        <TextView
+            android:id="@+id/textview_no_tools_found"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:gravity="center"
+            android:text="No tools match your search"
+            android:alpha="0.6"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/layout_widgets" />
+
         <!-- Footer Section -->
         <LinearLayout
             android:layout_width="wrap_content"

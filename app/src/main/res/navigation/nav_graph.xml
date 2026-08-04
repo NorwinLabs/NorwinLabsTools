@@ -12,9 +12,6 @@
         tools:layout="@layout/fragment_home">
 
         <action
-            android:id="@+id/action_HomeFragment_to_WebViewFragment"
-            app:destination="@id/WebViewFragment" />
-        <action
             android:id="@+id/action_HomeFragment_to_SettingsFragment"
             app:destination="@id/SettingsFragment" />
         <action
@@ -70,16 +67,6 @@
             app:destination="@id/PingToolFragment" />
     </fragment>
     
-    <fragment
-        android:id="@+id/WebViewFragment"
-        android:name="com.example.norwinlabstools.WebViewFragment"
-        android:label="@string/second_fragment_label"
-        tools:layout="@layout/fragment_webview">
-        <action
-            android:id="@+id/action_WebViewFragment_to_HomeFragment"
-            app:destination="@id/HomeFragment" />
-    </fragment>
-
     <fragment
         android:id="@+id/SettingsFragment"
         android:name="com.example.norwinlabstools.SettingsFragment"
