@@ -36,7 +36,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.database.*
 import com.yalantis.ucrop.UCrop
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.TilesOverlay
@@ -61,9 +60,7 @@ class CircleShareFragment : Fragment() {
     private var myPhotoBase64: String? = null
     private var isMapCentered = false
     private var hasSeenSelfInCircle = false
-
-    private var isSatellite = false
-    private var isDarkMode = false
+    private lateinit var mapTheme: MapThemeController
 
     // P2P (Nearby Connections)
     private lateinit var connectionsClient: ConnectionsClient
@@ -193,11 +190,14 @@ class CircleShareFragment : Fragment() {
         }
 
         binding.fabToggleSatellite.setOnClickListener {
-            toggleSatellite()
+            mapTheme.toggleSatellite()
         }
 
         binding.fabToggleDarkMode.setOnClickListener {
-            toggleDarkMode()
+            val isDark = mapTheme.toggleDarkMode()
+            binding.fabToggleDarkMode.setImageResource(
+                if (isDark) android.R.drawable.ic_menu_day else android.R.drawable.ic_menu_recent_history
+            )
         }
 
         checkLocationPermissions()
@@ -210,41 +210,6 @@ class CircleShareFragment : Fragment() {
         } else {
             currentCircleId?.let { joinCircle(it, isAutoJoin = true) }
         }
-    }
-
-    private fun toggleSatellite() {
-        isSatellite = !isSatellite
-        if (isSatellite) {
-            binding.mapView.setTileSource(TileSourceFactory.USGS_SAT)
-        } else {
-            binding.mapView.setTileSource(MapTileSources.DEFAULT)
-        }
-        updateMapTheme()
-    }
-
-    private fun toggleDarkMode() {
-        isDarkMode = !isDarkMode
-        if (isDarkMode) {
-            binding.fabToggleDarkMode.setImageResource(android.R.drawable.ic_menu_day)
-        } else {
-            binding.fabToggleDarkMode.setImageResource(android.R.drawable.ic_menu_recent_history)
-        }
-        updateMapTheme()
-    }
-
-    private fun updateMapTheme() {
-        if (isDarkMode) {
-            val matrix = ColorMatrix(floatArrayOf(
-                -1.0f, 0.0f, 0.0f, 0.0f, 255.0f,
-                0.0f, -1.0f, 0.0f, 0.0f, 255.0f,
-                0.0f, 0.0f, -1.0f, 0.0f, 255.0f,
-                0.0f, 0.0f, 0.0f, 1.0f, 0.0f
-            ))
-            binding.mapView.overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(matrix))
-        } else {
-            binding.mapView.overlayManager.tilesOverlay.setColorFilter(null)
-        }
-        binding.mapView.invalidate()
     }
 
     @SuppressLint("MissingPermission")
@@ -370,7 +335,8 @@ class CircleShareFragment : Fragment() {
     private fun setupMap() {
         binding.mapView.setTileSource(MapTileSources.DEFAULT)
         binding.mapView.setMultiTouchControls(true)
-        
+        mapTheme = MapThemeController(binding.mapView, MapTileSources.DEFAULT)
+
         val rotationGestureOverlay = RotationGestureOverlay(binding.mapView)
         rotationGestureOverlay.isEnabled = true
         binding.mapView.overlays.add(rotationGestureOverlay)
