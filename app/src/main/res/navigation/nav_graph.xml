@@ -50,6 +50,24 @@
         <action
             android:id="@+id/action_HomeFragment_to_FlockCameraMapFragment"
             app:destination="@id/FlockCameraMapFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_ConverterFragment"
+            app:destination="@id/ConverterFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_NotesFragment"
+            app:destination="@id/NotesFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_AboutFragment"
+            app:destination="@id/AboutFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_UE5GuideFragment"
+            app:destination="@id/UE5GuideFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_SshClientFragment"
+            app:destination="@id/SshClientFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_PingToolFragment"
+            app:destination="@id/PingToolFragment" />
     </fragment>
     
     <fragment
@@ -140,5 +158,41 @@
         android:name="com.example.norwinlabstools.FlockCameraMapFragment"
         android:label="Flock Cameras"
         tools:layout="@layout/fragment_flock_camera_map" />
+
+    <fragment
+        android:id="@+id/ConverterFragment"
+        android:name="com.example.norwinlabstools.ConverterFragment"
+        android:label="Converter"
+        tools:layout="@layout/fragment_converter" />
+
+    <fragment
+        android:id="@+id/NotesFragment"
+        android:name="com.example.norwinlabstools.NotesFragment"
+        android:label="Notes"
+        tools:layout="@layout/fragment_notes" />
+
+    <fragment
+        android:id="@+id/AboutFragment"
+        android:name="com.example.norwinlabstools.AboutFragment"
+        android:label="About"
+        tools:layout="@layout/fragment_about" />
+
+    <fragment
+        android:id="@+id/UE5GuideFragment"
+        android:name="com.example.norwinlabstools.UE5GuideFragment"
+        android:label="UE5 Guide"
+        tools:layout="@layout/fragment_ue5_guide" />
+
+    <fragment
+        android:id="@+id/SshClientFragment"
+        android:name="com.example.norwinlabstools.SshClientFragment"
+        android:label="SSH Client"
+        tools:layout="@layout/fragment_ssh_client" />
+
+    <fragment
+        android:id="@+id/PingToolFragment"
+        android:name="com.example.norwinlabstools.PingToolFragment"
+        android:label="Ping Tool"
+        tools:layout="@layout/fragment_ping_tool" />
 
 </navigation>
