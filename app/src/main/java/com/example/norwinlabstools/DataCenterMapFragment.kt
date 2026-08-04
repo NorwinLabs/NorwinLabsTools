@@ -1,7 +1,5 @@
 package com.example.norwinlabstools
 
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.view.LayoutInflater
@@ -9,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import com.example.norwinlabstools.databinding.FragmentDataCenterMapBinding
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
@@ -22,8 +19,7 @@ class DataCenterMapFragment : Fragment() {
     private var _binding: FragmentDataCenterMapBinding? = null
     private val binding get() = _binding!!
 
-    private var isSatellite = false
-    private var isDarkMode = false
+    private lateinit var mapTheme: MapThemeController
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -45,8 +41,13 @@ class DataCenterMapFragment : Fragment() {
         binding.tvDataCenterCount.text = "${DataCenters.ALL.size} large data centers worldwide"
 
         binding.fabFitAll.setOnClickListener { fitAllMarkers() }
-        binding.fabToggleSatellite.setOnClickListener { toggleSatellite() }
-        binding.fabToggleDarkMode.setOnClickListener { toggleDarkMode() }
+        binding.fabToggleSatellite.setOnClickListener { mapTheme.toggleSatellite() }
+        binding.fabToggleDarkMode.setOnClickListener {
+            val isDark = mapTheme.toggleDarkMode()
+            binding.fabToggleDarkMode.setImageResource(
+                if (isDark) android.R.drawable.ic_menu_day else android.R.drawable.ic_menu_recent_history
+            )
+        }
 
         binding.mapView.post { fitAllMarkers() }
     }
@@ -54,6 +55,7 @@ class DataCenterMapFragment : Fragment() {
     private fun setupMap() {
         binding.mapView.setTileSource(MapTileSources.DEFAULT)
         binding.mapView.setMultiTouchControls(true)
+        mapTheme = MapThemeController(binding.mapView, MapTileSources.DEFAULT)
 
         val rotationGestureOverlay = RotationGestureOverlay(binding.mapView)
         rotationGestureOverlay.isEnabled = true
@@ -83,41 +85,6 @@ class DataCenterMapFragment : Fragment() {
         val west = sites.minOf { it.lng }
         val boundingBox = BoundingBox(north, east, south, west).increaseByScale(1.2f)
         binding.mapView.zoomToBoundingBox(boundingBox, true)
-    }
-
-    private fun toggleSatellite() {
-        isSatellite = !isSatellite
-        if (isSatellite) {
-            binding.mapView.setTileSource(TileSourceFactory.USGS_SAT)
-        } else {
-            binding.mapView.setTileSource(MapTileSources.DEFAULT)
-        }
-        updateMapTheme()
-    }
-
-    private fun toggleDarkMode() {
-        isDarkMode = !isDarkMode
-        if (isDarkMode) {
-            binding.fabToggleDarkMode.setImageResource(android.R.drawable.ic_menu_day)
-        } else {
-            binding.fabToggleDarkMode.setImageResource(android.R.drawable.ic_menu_recent_history)
-        }
-        updateMapTheme()
-    }
-
-    private fun updateMapTheme() {
-        if (isDarkMode) {
-            val matrix = ColorMatrix(floatArrayOf(
-                -1.0f, 0.0f, 0.0f, 0.0f, 255.0f,
-                0.0f, -1.0f, 0.0f, 0.0f, 255.0f,
-                0.0f, 0.0f, -1.0f, 0.0f, 255.0f,
-                0.0f, 0.0f, 0.0f, 1.0f, 0.0f
-            ))
-            binding.mapView.overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(matrix))
-        } else {
-            binding.mapView.overlayManager.tilesOverlay.setColorFilter(null)
-        }
-        binding.mapView.invalidate()
     }
 
     override fun onResume() { super.onResume(); binding.mapView.onResume() }

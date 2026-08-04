@@ -38,29 +38,35 @@ class HomeFragment : Fragment() {
     private val KEY_API_KEY = "gemini_api_key"
 
     private val allTools = listOf(
-        Tool(1, "Calendar", android.R.drawable.ic_menu_today, "1.0.2", 0xFF2E7D32.toInt(), "https://images.unsplash.com/photo-1506784365847-bbad939e9335?q=80&w=500&auto=format&fit=crop"),
-        Tool(2, "Converter", android.R.drawable.ic_menu_compass, "1.0.0", 0xFF1565C0.toInt(), "https://images.unsplash.com/photo-1574634534894-89d7576c8259?q=80&w=500&auto=format&fit=crop"),
-        Tool(3, "Notes", android.R.drawable.ic_menu_edit, "1.0.0", 0xFFEF6C00.toInt(), "https://images.unsplash.com/photo-1517842645767-c639042777db?q=80&w=500&auto=format&fit=crop"),
-        Tool(4, "Settings", android.R.drawable.ic_menu_manage, "1.0.1", 0xFF455A64.toInt(), "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop"),
-        Tool(5, "About", android.R.drawable.ic_menu_info_details, "1.0.0", 0xFF4527A0.toInt(), "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=500&auto=format&fit=crop"),
-        Tool(9, "Idea Generator", R.drawable.ic_lightbulb, "1.0.1", 0xFFF9A825.toInt(), "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=500&auto=format&fit=crop"),
-        Tool(12, "Update", android.R.drawable.ic_menu_upload, "1.0.1", 0xFFC62828.toInt(), "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=500&auto=format&fit=crop"),
-        Tool(13, "Windhelm", android.R.drawable.ic_menu_view, "1.0.2", 0xFF283593.toInt(), "https://windhelm.dev/background.png"),
-        Tool(15, "UE5 Guide", android.R.drawable.ic_menu_directions, "1.0.0", 0xFF00695C.toInt(), "https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=500&auto=format&fit=crop"),
-        Tool(16, "Trello", android.R.drawable.ic_menu_agenda, "1.0.1", 0xFF0079BF.toInt(), "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=500&auto=format&fit=crop"),
-        Tool(17, "SSH Client", android.R.drawable.ic_dialog_dialer, "1.0.0", 0xFF37474F.toInt(), "https://images.unsplash.com/photo-1629654297299-c8506221ca97?q=80&w=500&auto=format&fit=crop"),
-        Tool(18, "Ping Tool", android.R.drawable.ic_menu_revert, "1.0.0", 0xFF0091EA.toInt(), "https://images.unsplash.com/photo-1558494949-ef010ca73324?q=80&w=500&auto=format&fit=crop"),
-        Tool(20, "Net Scanner", android.R.drawable.ic_menu_share, "1.0.2", 0xFF546E7A.toInt(), "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=500&auto=format&fit=crop"),
-        Tool(21, "Video Ideas", android.R.drawable.ic_menu_slideshow, "1.0.3", 0xFFE91E63.toInt(), "https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=500&auto=format&fit=crop"),
-        Tool(22, "Dev News", android.R.drawable.ic_menu_recent_history, "1.0.1", 0xFF2E7D32.toInt(), "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=500&auto=format&fit=crop"),
-        Tool(23, "Bug Report", android.R.drawable.ic_menu_report_image, "1.0.0", 0xFFC62828.toInt(), "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=500&auto=format&fit=crop"),
-        Tool(24, "Budget", android.R.drawable.ic_menu_save, "1.0.0", 0xFF4CAF50.toInt(), "https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=500&auto=format&fit=crop"),
-        Tool(25, "System Dash", android.R.drawable.ic_menu_info_details, "1.0.0", 0xFF607D8B.toInt(), "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=500&auto=format&fit=crop"),
-        Tool(26, "Port Scanner", android.R.drawable.ic_menu_compass, "1.0.0", 0xFF3F51B5.toInt(), "https://images.unsplash.com/photo-1558494949-ef010ca73324?q=80&w=500&auto=format&fit=crop"),
-        Tool(27, "Circle Share", android.R.drawable.ic_menu_share, "1.0.0", 0xFF2196F3.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop"),
-        Tool(28, "Data Centers", android.R.drawable.ic_menu_mapmode, "1.0.0", 0xFF00838F.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop"),
-        Tool(29, "Flock Cameras", android.R.drawable.ic_menu_camera, "1.0.0", 0xFF6A1B9A.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop")
+        Tool(1, "Calendar", android.R.drawable.ic_menu_today, "1.0.2", 0xFF2E7D32.toInt(), "https://images.unsplash.com/photo-1506784365847-bbad939e9335?q=80&w=500&auto=format&fit=crop", category = "Personal"),
+        Tool(2, "Converter", android.R.drawable.ic_menu_compass, "1.0.0", 0xFF1565C0.toInt(), "https://images.unsplash.com/photo-1574634534894-89d7576c8259?q=80&w=500&auto=format&fit=crop", category = "Personal"),
+        Tool(3, "Notes", android.R.drawable.ic_menu_edit, "1.0.0", 0xFFEF6C00.toInt(), "https://images.unsplash.com/photo-1517842645767-c639042777db?q=80&w=500&auto=format&fit=crop", category = "Personal"),
+        Tool(4, "Settings", android.R.drawable.ic_menu_manage, "1.0.1", 0xFF455A64.toInt(), "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop", category = "System"),
+        // No background photo: dedupes what used to be an identical image to Bug Report's card.
+        Tool(5, "About", android.R.drawable.ic_menu_info_details, "1.0.0", 0xFF4527A0.toInt(), category = "System"),
+        Tool(9, "Idea Generator", R.drawable.ic_lightbulb, "1.0.1", 0xFFF9A825.toInt(), "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=500&auto=format&fit=crop", category = "Dev Tools"),
+        Tool(12, "Update", android.R.drawable.ic_menu_upload, "1.0.1", 0xFFC62828.toInt(), "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=500&auto=format&fit=crop", category = "System"),
+        Tool(13, "Windhelm", android.R.drawable.ic_menu_view, "1.0.2", 0xFF283593.toInt(), "https://windhelm.dev/background.png", category = "Windhelm"),
+        Tool(15, "UE5 Guide", android.R.drawable.ic_menu_directions, "1.0.0", 0xFF00695C.toInt(), "https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=500&auto=format&fit=crop", category = "Windhelm"),
+        Tool(16, "Trello", android.R.drawable.ic_menu_agenda, "1.0.1", 0xFF0079BF.toInt(), "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=500&auto=format&fit=crop", category = "Windhelm"),
+        Tool(17, "SSH Client", android.R.drawable.ic_dialog_dialer, "1.0.0", 0xFF37474F.toInt(), "https://images.unsplash.com/photo-1629654297299-c8506221ca97?q=80&w=500&auto=format&fit=crop", category = "Network Tools"),
+        // No background photo: dedupes what used to be an identical image to Port Scanner's card.
+        Tool(18, "Ping Tool", android.R.drawable.ic_menu_revert, "1.0.0", 0xFF0091EA.toInt(), category = "Network Tools"),
+        Tool(20, "Net Scanner", android.R.drawable.ic_menu_share, "1.0.2", 0xFF546E7A.toInt(), "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=500&auto=format&fit=crop", category = "Network Tools"),
+        Tool(21, "Video Ideas", android.R.drawable.ic_menu_slideshow, "1.0.3", 0xFFE91E63.toInt(), "https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=500&auto=format&fit=crop", category = "Dev Tools"),
+        Tool(22, "Dev News", android.R.drawable.ic_menu_recent_history, "1.0.1", 0xFF2E7D32.toInt(), "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=500&auto=format&fit=crop", category = "Dev Tools"),
+        Tool(23, "Bug Report", android.R.drawable.ic_menu_report_image, "1.0.0", 0xFFC62828.toInt(), "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=500&auto=format&fit=crop", category = "System"),
+        Tool(24, "Budget", android.R.drawable.ic_menu_save, "1.0.0", 0xFF4CAF50.toInt(), "https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=500&auto=format&fit=crop", category = "Personal"),
+        Tool(25, "System Dash", android.R.drawable.ic_menu_info_details, "1.0.0", 0xFF607D8B.toInt(), "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=500&auto=format&fit=crop", category = "System"),
+        Tool(26, "Port Scanner", android.R.drawable.ic_menu_compass, "1.0.0", 0xFF3F51B5.toInt(), "https://images.unsplash.com/photo-1558494949-ef010ca73324?q=80&w=500&auto=format&fit=crop", category = "Network Tools"),
+        Tool(27, "Circle Share", android.R.drawable.ic_menu_share, "1.0.0", 0xFF2196F3.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop", category = "Maps & Location"),
+        // No background photo: dedupes what used to be an identical image shared by three cards.
+        Tool(28, "Data Centers", android.R.drawable.ic_menu_mapmode, "1.0.0", 0xFF00838F.toInt(), category = "Maps & Location"),
+        Tool(29, "Flock Cameras", android.R.drawable.ic_menu_camera, "1.0.0", 0xFF6A1B9A.toInt(), category = "Maps & Location")
     )
+
+    // Controls section order in the "Add Tool" sheet; anything with an unlisted category sorts last.
+    private val categoryOrder = listOf("Maps & Location", "Network Tools", "Dev Tools", "Windhelm", "Personal", "System")
 
     private var currentTools = mutableListOf<Tool>()
 
@@ -406,12 +412,15 @@ class HomeFragment : Fragment() {
         }
         val dialog = BottomSheetDialog(requireContext())
         val bottomSheetBinding = LayoutAddToolsBinding.inflate(layoutInflater)
-        val sheetAdapter = ToolsAdapter(availableToAdd, { tool ->
+        val sheetAdapter = CategorizedToolsAdapter(availableToAdd, categoryOrder) { tool ->
             adapter.addTool(tool)
             saveHomeTools()
             dialog.dismiss()
-        }, { _, _ -> }, {})
-        bottomSheetBinding.recyclerviewAvailableTools.layoutManager = GridLayoutManager(context, 3)
+        }
+        val spanCount = 3
+        val gridLayoutManager = GridLayoutManager(context, spanCount)
+        gridLayoutManager.spanSizeLookup = sheetAdapter.spanSizeLookup(spanCount)
+        bottomSheetBinding.recyclerviewAvailableTools.layoutManager = gridLayoutManager
         bottomSheetBinding.recyclerviewAvailableTools.adapter = sheetAdapter
         dialog.setContentView(bottomSheetBinding.root)
         dialog.show()

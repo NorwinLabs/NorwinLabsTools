@@ -1,7 +1,5 @@
 package com.example.norwinlabstools
 
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.view.LayoutInflater
@@ -12,7 +10,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.norwinlabstools.databinding.FragmentFlockCameraMapBinding
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
@@ -22,8 +19,7 @@ class FlockCameraMapFragment : Fragment() {
     private var _binding: FragmentFlockCameraMapBinding? = null
     private val binding get() = _binding!!
 
-    private var isSatellite = false
-    private var isDarkMode = false
+    private lateinit var mapTheme: MapThemeController
     private val cameraMarkers = mutableListOf<Marker>()
 
     // Below this zoom level the visible area is too large for a responsible, bounded
@@ -47,14 +43,20 @@ class FlockCameraMapFragment : Fragment() {
         setupMap()
 
         binding.btnSearchArea.setOnClickListener { searchThisArea() }
-        binding.fabToggleSatellite.setOnClickListener { toggleSatellite() }
-        binding.fabToggleDarkMode.setOnClickListener { toggleDarkMode() }
+        binding.fabToggleSatellite.setOnClickListener { mapTheme.toggleSatellite() }
+        binding.fabToggleDarkMode.setOnClickListener {
+            val isDark = mapTheme.toggleDarkMode()
+            binding.fabToggleDarkMode.setImageResource(
+                if (isDark) android.R.drawable.ic_menu_day else android.R.drawable.ic_menu_recent_history
+            )
+        }
     }
 
     private fun setupMap() {
         binding.mapView.setTileSource(MapTileSources.DEFAULT)
         binding.mapView.setMultiTouchControls(true)
         binding.mapView.controller.setZoom(12.0)
+        mapTheme = MapThemeController(binding.mapView, MapTileSources.DEFAULT)
 
         val rotationGestureOverlay = RotationGestureOverlay(binding.mapView)
         rotationGestureOverlay.isEnabled = true
@@ -108,41 +110,6 @@ class FlockCameraMapFragment : Fragment() {
             marker.icon = ContextCompat.getDrawable(requireContext(), android.R.drawable.ic_menu_camera)
             binding.mapView.overlays.add(marker)
             cameraMarkers.add(marker)
-        }
-        binding.mapView.invalidate()
-    }
-
-    private fun toggleSatellite() {
-        isSatellite = !isSatellite
-        if (isSatellite) {
-            binding.mapView.setTileSource(TileSourceFactory.USGS_SAT)
-        } else {
-            binding.mapView.setTileSource(MapTileSources.DEFAULT)
-        }
-        updateMapTheme()
-    }
-
-    private fun toggleDarkMode() {
-        isDarkMode = !isDarkMode
-        if (isDarkMode) {
-            binding.fabToggleDarkMode.setImageResource(android.R.drawable.ic_menu_day)
-        } else {
-            binding.fabToggleDarkMode.setImageResource(android.R.drawable.ic_menu_recent_history)
-        }
-        updateMapTheme()
-    }
-
-    private fun updateMapTheme() {
-        if (isDarkMode) {
-            val matrix = ColorMatrix(floatArrayOf(
-                -1.0f, 0.0f, 0.0f, 0.0f, 255.0f,
-                0.0f, -1.0f, 0.0f, 0.0f, 255.0f,
-                0.0f, 0.0f, -1.0f, 0.0f, 255.0f,
-                0.0f, 0.0f, 0.0f, 1.0f, 0.0f
-            ))
-            binding.mapView.overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(matrix))
-        } else {
-            binding.mapView.overlayManager.tilesOverlay.setColorFilter(null)
         }
         binding.mapView.invalidate()
     }
