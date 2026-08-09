@@ -20,7 +20,6 @@ import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -30,6 +29,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.norwinlabstools.databinding.FragmentLocationSharingBinding
 import com.example.norwinlabstools.databinding.ItemCircleMemberBinding
+import com.example.norwinlabstools.databinding.LayoutCircleMembersBinding
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -506,14 +506,11 @@ class CircleShareFragment : Fragment() {
     private fun showMembersSheet() {
         if (currentCircleId == null) return
         val dialog = BottomSheetDialog(requireContext())
-        
-        val root = layoutInflater.inflate(R.layout.layout_add_tools, null)
-        val title = root.findViewById<TextView>(R.id.textview_add_tools_title)
-        title.text = "Circle Members"
-        
-        val recycler = root.findViewById<RecyclerView>(R.id.recyclerview_available_tools)
+
+        val sheetBinding = LayoutCircleMembersBinding.inflate(layoutInflater)
+        val recycler = sheetBinding.recyclerviewCircleMembers
         recycler.layoutManager = LinearLayoutManager(context)
-        
+
         // Use a live listener for the member list to ensure it's always accurate
         val membersListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -546,7 +543,7 @@ class CircleShareFragment : Fragment() {
             membersRef?.removeEventListener(membersListener)
         }
 
-        dialog.setContentView(root)
+        dialog.setContentView(sheetBinding.root)
         dialog.show()
     }
 

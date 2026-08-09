@@ -185,6 +185,9 @@ class HomeFragment : Fragment() {
         }
 
         setupHeaderAndFooter()
+        // Without this, the widget's "Checking..." placeholder text just sits there forever
+        // until the user happens to tap it - it looks like a check is already in progress.
+        checkForUpdates(silent = true)
     }
 
     override fun onResume() {
@@ -203,6 +206,7 @@ class HomeFragment : Fragment() {
 
     fun filterTools(query: String) {
         adapter.filter(query)
+        binding.textviewNoToolsFound.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
     }
 
     private fun checkBiometricAndNavigate(destinationId: Int) {
@@ -332,17 +336,25 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun checkForUpdates() {
+    /**
+     * @param silent When true (the automatic check on Home load), only the status text updates -
+     * no Toasts or dialogs, so opening the app doesn't interrupt with update prompts the user
+     * didn't ask for. Tapping the widget explicitly always gets the full interactive flow.
+     */
+    private fun checkForUpdates(silent: Boolean = false) {
         val updateManager = UpdateManager(requireContext())
         binding.textviewUpdateStatus.text = "Checking..."
-        Toast.makeText(requireContext(), "Checking for updates...", Toast.LENGTH_SHORT).show()
-        
+        if (!silent) {
+            Toast.makeText(requireContext(), "Checking for updates...", Toast.LENGTH_SHORT).show()
+        }
+
         updateManager.checkForUpdates(object : UpdateManager.UpdateCallback {
             override fun onUpdateAvailable(latestVersion: String, downloadUrl: String) {
                 activity?.runOnUiThread {
                     binding.textviewUpdateStatus.text = "New version: $latestVersion"
                     binding.textviewUpdateStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark, null))
-                    
+                    if (silent) return@runOnUiThread
+
                     AlertDialog.Builder(requireContext())
                         .setTitle("Update Available")
                         .setMessage("A new version ($latestVersion) is available. Would you like to download it?")
@@ -370,19 +382,23 @@ class HomeFragment : Fragment() {
                 }
             }
             override fun onNoUpdate() {
-                activity?.runOnUiThread { 
+                activity?.runOnUiThread {
                     binding.textviewUpdateStatus.text = "Up to date"
                     binding.textviewUpdateStatus.setTextColor(resources.getColor(android.R.color.darker_gray, null))
-                    Toast.makeText(requireContext(), "You are on the latest version", Toast.LENGTH_SHORT).show() 
+                    if (!silent) {
+                        Toast.makeText(requireContext(), "You are on the latest version", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             override fun onError(error: String, url: String) {
                 activity?.runOnUiThread {
                     binding.textviewUpdateStatus.text = "Check failed"
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("Update Failed")
-                        .setMessage("$error\n\nChecked URL:\n$url")
-                        .setPositiveButton("OK", null).show()
+                    if (!silent) {
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("Update Failed")
+                            .setMessage("$error\n\nChecked URL:\n$url")
+                            .setPositiveButton("OK", null).show()
+                    }
                 }
             }
             override fun onDownloadProgress(progress: Int) {}
