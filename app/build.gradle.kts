@@ -183,6 +183,9 @@ dependencies {
     // SSH Client
     implementation(libs.jsch)
 
+    // VoIP Calling
+    implementation(libs.stream.webrtc)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

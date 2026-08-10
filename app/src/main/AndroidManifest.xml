@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <!-- Nearby Connections & P2P Permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH" />

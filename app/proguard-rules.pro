@@ -19,3 +19,9 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# WebRTC (VoIP calling): the AAR ships its own consumer proguard.txt, but its native/JNI layer
+# looks up Java classes and members by name, which R8 can't see through. This is a belt-and-
+# suspenders rule on top of that, since minification can't be tested from this environment.
+-keep class org.webrtc.** { *; }
+-dontwarn org.webrtc.**
