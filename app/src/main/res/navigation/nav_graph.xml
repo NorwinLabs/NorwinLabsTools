@@ -68,6 +68,9 @@
         <action
             android:id="@+id/action_HomeFragment_to_VoipCallFragment"
             app:destination="@id/VoipCallFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_HuntingInsightsMapFragment"
+            app:destination="@id/HuntingInsightsMapFragment" />
     </fragment>
     
     <fragment
@@ -195,5 +198,11 @@
             app:argType="boolean"
             android:defaultValue="false" />
     </fragment>
+
+    <fragment
+        android:id="@+id/HuntingInsightsMapFragment"
+        android:name="com.example.norwinlabstools.HuntingInsightsMapFragment"
+        android:label="Hunting Insights"
+        tools:layout="@layout/fragment_hunting_insights_map" />
 
 </navigation>
