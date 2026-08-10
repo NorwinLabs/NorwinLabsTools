@@ -63,7 +63,8 @@ class HomeFragment : Fragment() {
         // No background photo: dedupes what used to be an identical image shared by three cards.
         Tool(28, "Data Centers", android.R.drawable.ic_menu_mapmode, "1.0.0", 0xFF00838F.toInt(), category = "Maps & Location"),
         Tool(29, "Flock Cameras", android.R.drawable.ic_menu_camera, "1.0.0", 0xFF6A1B9A.toInt(), category = "Maps & Location"),
-        Tool(30, "VoIP Calling", android.R.drawable.ic_menu_call, "1.0.0", 0xFF00897B.toInt(), category = "Communication")
+        Tool(30, "VoIP Calling", android.R.drawable.ic_menu_call, "1.0.0", 0xFF00897B.toInt(), category = "Communication"),
+        Tool(31, "Hunting Insights", android.R.drawable.ic_menu_mylocation, "1.0.0", 0xFF33691E.toInt(), category = "Maps & Location")
     )
 
     // Controls section order in the "Add Tool" sheet; anything with an unlisted category sorts last.
@@ -137,6 +138,7 @@ class HomeFragment : Fragment() {
                         28 -> findNavController().navigate(R.id.action_HomeFragment_to_DataCenterMapFragment)
                         29 -> findNavController().navigate(R.id.action_HomeFragment_to_FlockCameraMapFragment)
                         30 -> findNavController().navigate(R.id.action_HomeFragment_to_VoipCallFragment)
+                        31 -> findNavController().navigate(R.id.action_HomeFragment_to_HuntingInsightsMapFragment)
                         else -> {
                              AlertDialog.Builder(requireContext())
                                 .setTitle(tool.name)
