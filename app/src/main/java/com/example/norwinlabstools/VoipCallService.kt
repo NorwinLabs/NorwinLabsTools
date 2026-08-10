@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import java.util.UUID
@@ -122,6 +123,10 @@ class VoipCallService : Service() {
     // --- Notifications ---
 
     private fun createNotificationChannel() {
+        // Notification channels don't exist before API 26 - NotificationCompat.Builder already
+        // ignores the channel id it's given on older devices, so there's nothing else to do down
+        // there; just skip creating channels that can't exist.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         // Two channels, not one: the "listening"/"in call" status notification should stay
         // silent (it's just there to satisfy the foreground service requirement and let the
         // user get back to the call), while an actual incoming call needs to alert loudly. On
