@@ -24,13 +24,14 @@ import java.util.UUID
  * Audio-only VoIP calling over WebRTC, signaled through the same Firebase Realtime Database
  * Circle Share already uses (under its own top-level `voipCalls`/`voipInbox` nodes).
  *
- * Two real limitations worth knowing:
- * - There's no foreground service keeping a signaling connection alive in the background, so
- *   this only rings while the Calls screen is open on the receiving end - not a true "phone
- *   call" replacement that rings when the app is closed.
- * - Only a public STUN server is configured (no TURN server), so two devices both behind
- *   restrictive/symmetric NATs may fail to establish a connection. Fixing that would require
- *   running or paying for TURN relay infrastructure this app doesn't have.
+ * A single instance of this class is meant to be owned by [VoipCallService] and shared with
+ * whatever UI (the VoIP Calling screen) happens to be bound at a given moment, so the call's
+ * signaling state survives the UI going away - that's what lets an incoming call be detected and
+ * shown while the app is backgrounded.
+ *
+ * One real limitation worth knowing: only a public STUN server is configured (no TURN server),
+ * so two devices both behind restrictive/symmetric NATs may fail to establish a connection.
+ * Fixing that would require running or paying for TURN relay infrastructure this app doesn't have.
  */
 class VoipCallManager(private val context: Context) {
 
@@ -38,6 +39,9 @@ class VoipCallManager(private val context: Context) {
         private const val STUN_SERVER = "stun:stun.l.google.com:19302"
         private var factoryInitialized = false
     }
+
+    /** A call that's ringing and awaiting Accept/Decline, for UI that binds in after the fact. */
+    data class PendingIncomingCall(val callId: String, val callerId: String, val callerName: String)
 
     interface CallListener {
         fun onIncomingCall(callId: String, callerId: String, callerName: String)
@@ -60,9 +64,19 @@ class VoipCallManager(private val context: Context) {
     private var currentCallId: String? = null
     private var isCaller = false
     private var remoteDescriptionSet = false
+    private var callActive = false
     private val pendingRemoteCandidates = mutableListOf<IceCandidate>()
 
     private var pendingOffer: String? = null
+    private var pendingIncomingCall: PendingIncomingCall? = null
+    // Callee ID of a call this device placed that hasn't been accepted/declined/cancelled yet -
+    // lets a freshly-bound UI show the "Calling…" screen instead of the dial screen if it binds
+    // in mid-ring (e.g. the app was backgrounded and foregrounded again while still ringing out).
+    private var pendingOutgoingCalleeId: String? = null
+    // Name to show for the other party on the in-call screen. On the callee side this is their
+    // real display name (known from the incoming offer); on the caller side it's just the Call ID
+    // dialed, since this app has no way to learn the callee's display name before they answer.
+    private var currentPeerName: String? = null
     private var inboxRef: DatabaseReference? = null
     private var inboxListener: ValueEventListener? = null
     private var callStatusRef: DatabaseReference? = null
@@ -83,6 +97,18 @@ class VoipCallManager(private val context: Context) {
         }
     }
 
+    /** A call ringing right now that a freshly-bound UI hasn't been told about yet, if any. */
+    fun getPendingIncomingCall(): PendingIncomingCall? = pendingIncomingCall
+
+    /** True once ICE has connected on the current call - lets a freshly-bound UI catch up. */
+    fun isCallActive(): Boolean = callActive
+
+    /** Display name of the other party on the current/pending call, if known. */
+    fun getCurrentPeerName(): String? = currentPeerName
+
+    /** Callee ID of a call placed by this device that's still ringing out, if any. */
+    fun getPendingOutgoingCalleeId(): String? = pendingOutgoingCalleeId
+
     /** Starts listening for incoming calls addressed to this user's Call ID. */
     fun startListeningForCalls(myUserId: String) {
         this.myUserId = myUserId
@@ -99,6 +125,8 @@ class VoipCallManager(private val context: Context) {
                     currentCallId = callId
                     isCaller = false
                     pendingOffer = offer
+                    pendingIncomingCall = PendingIncomingCall(callId, callerId, callerName)
+                    currentPeerName = callerName
                     // Attach now, not just after accepting - otherwise a caller who cancels
                     // while this device is still on the ringing screen would leave it stuck,
                     // since nothing would be listening for that status change yet.
@@ -126,6 +154,8 @@ class VoipCallManager(private val context: Context) {
         val callId = UUID.randomUUID().toString()
         currentCallId = callId
         isCaller = true
+        currentPeerName = calleeId
+        pendingOutgoingCalleeId = calleeId
 
         peerConnection = createPeerConnection(callId, myRole = "caller")
         if (peerConnection == null) { listener?.onError("Failed to start call engine"); return }
@@ -160,6 +190,7 @@ class VoipCallManager(private val context: Context) {
         val callId = currentCallId ?: return
         val userId = myUserId ?: return
         val offerSdp = pendingOffer ?: return
+        pendingIncomingCall = null
 
         peerConnection = createPeerConnection(callId, myRole = "callee")
         if (peerConnection == null) { listener?.onError("Failed to start call engine"); return }
@@ -178,6 +209,7 @@ class VoipCallManager(private val context: Context) {
                         peerConnection?.setLocalDescription(SimpleSdpObserver(), sdp)
                         database?.child("voipCalls")?.child(callId)?.child("answer")?.setValue(sdp.description)
                         database?.child("voipCalls")?.child(callId)?.child("status")?.setValue("accepted")
+                        callActive = true
                         listener?.onCallConnected()
                     }
                     override fun onCreateFailure(error: String?) {
@@ -262,6 +294,7 @@ class VoipCallManager(private val context: Context) {
             }
             override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState?) {
                 if (newState == PeerConnection.IceConnectionState.CONNECTED) {
+                    callActive = true
                     listener?.onCallConnected()
                 }
             }
@@ -281,6 +314,7 @@ class VoipCallManager(private val context: Context) {
                 if (!snapshot.exists()) return
                 val status = snapshot.child("status").getValue(String::class.java)
                 if (isCaller && status == "accepted" && !remoteDescriptionSet) {
+                    pendingOutgoingCalleeId = null
                     val answerSdp = snapshot.child("answer").getValue(String::class.java) ?: return
                     val remoteDesc = SessionDescription(SessionDescription.Type.ANSWER, answerSdp)
                     peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
@@ -358,7 +392,11 @@ class VoipCallManager(private val context: Context) {
         currentCallId = null
         isCaller = false
         pendingOffer = null
+        pendingIncomingCall = null
+        pendingOutgoingCalleeId = null
+        currentPeerName = null
         remoteDescriptionSet = false
+        callActive = false
         pendingRemoteCandidates.clear()
     }
 

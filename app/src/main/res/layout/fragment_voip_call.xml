@@ -27,7 +27,7 @@
             android:layout_marginTop="4dp"
             android:layout_marginBottom="24dp"
             android:gravity="center"
-            android:text="Calls only ring while the other person also has this screen open."
+            android:text="A notification will let you know when someone calls, even if you're not in the app."
             android:textAppearance="?attr/textAppearanceCaption"
             android:alpha="0.7" />
 

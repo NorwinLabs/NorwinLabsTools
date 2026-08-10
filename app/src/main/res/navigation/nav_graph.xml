@@ -189,6 +189,11 @@
         android:id="@+id/VoipCallFragment"
         android:name="com.example.norwinlabstools.VoipCallFragment"
         android:label="VoIP Calling"
-        tools:layout="@layout/fragment_voip_call" />
+        tools:layout="@layout/fragment_voip_call">
+        <argument
+            android:name="autoAccept"
+            app:argType="boolean"
+            android:defaultValue="false" />
+    </fragment>
 
 </navigation>

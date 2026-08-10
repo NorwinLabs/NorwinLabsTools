@@ -40,12 +40,27 @@ class MainActivity : AppCompatActivity() {
                 binding.fab.hide()
             }
         }
+
+        handleVoipIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         findNavController(R.id.nav_host_fragment_content_main).handleDeepLink(intent)
+        handleVoipIntent(intent)
+    }
+
+    /** Opens the VoIP Calling screen when launched from the incoming-call notification. */
+    private fun handleVoipIntent(intent: Intent) {
+        if (!intent.getBooleanExtra(VoipCallService.EXTRA_OPEN_VOIP, false)) return
+        val autoAccept = intent.getBooleanExtra(VoipCallService.EXTRA_AUTO_ACCEPT, false)
+        val args = Bundle().apply { putBoolean("autoAccept", autoAccept) }
+        findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.VoipCallFragment, args)
+        // Consume the extras so rotating the screen or another onNewIntent doesn't re-navigate
+        // or re-trigger auto-accept.
+        intent.removeExtra(VoipCallService.EXTRA_OPEN_VOIP)
+        intent.removeExtra(VoipCallService.EXTRA_AUTO_ACCEPT)
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

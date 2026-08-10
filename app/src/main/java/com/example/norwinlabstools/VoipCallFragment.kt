@@ -1,11 +1,15 @@
 package com.example.norwinlabstools
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
@@ -14,30 +18,31 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.norwinlabstools.databinding.FragmentVoipCallBinding
 import java.util.Locale
-import java.util.UUID
 
+/**
+ * UI for the VoIP Calling applet. Owns no call state itself - [VoipCallService] does, so calls
+ * can still be detected and answered while this screen isn't open. This fragment just binds to
+ * that service, mirrors its state into the four screens below, and forwards button taps.
+ */
 class VoipCallFragment : Fragment() {
 
     private var _binding: FragmentVoipCallBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var callManager: VoipCallManager
+    private var voipService: VoipCallService? = null
+    // Set true as soon as bindService() is called, not once onServiceConnected fires - the
+    // connection can be legitimately unbound before it ever connects (e.g. a very fast
+    // onStart/onStop), and unbindService() still needs to be called in that case too.
+    private var serviceBound = false
 
-    private val prefsName = "voip_prefs"
-    private val keyUserId = "user_id"
-    private val keyMyName = "my_name"
-
-    private var myUserId: String = ""
-    private var myName: String = ""
-
-    // The person on the other end of the current/pending call, for the in-call screen title.
-    // On the callee side this is their real display name (known from the incoming offer); on
-    // the caller side it's just the Call ID dialed, since this app has no way to learn the
-    // callee's display name before they've answered.
-    private var currentPeerName: String = ""
+    // Consumed on the first incoming call seen after binding, then never acted on again -
+    // set from the "autoAccept" nav argument when this screen was opened via a notification's
+    // Accept action, so the fragment doesn't re-trigger accept on every later rebind.
+    private var autoAcceptPending = false
 
     private var isMuted = false
     private var isSpeakerOn = false
@@ -52,6 +57,57 @@ class VoipCallFragment : Fragment() {
         }
     }
 
+    private val callListener = object : VoipCallManager.CallListener {
+        override fun onIncomingCall(callId: String, callerId: String, callerName: String) {
+            activity?.runOnUiThread {
+                if (_binding == null) return@runOnUiThread
+                showIncomingCall(callerName)
+                if (autoAcceptPending) {
+                    autoAcceptPending = false
+                    acceptCall()
+                }
+            }
+        }
+        override fun onCallConnected() {
+            activity?.runOnUiThread { if (_binding != null) showInCall() }
+        }
+        override fun onCallEnded(reason: String) {
+            activity?.runOnUiThread {
+                if (_binding == null) return@runOnUiThread
+                Toast.makeText(context, reason, Toast.LENGTH_SHORT).show()
+                showDialScreen()
+            }
+        }
+        override fun onError(message: String) {
+            activity?.runOnUiThread {
+                if (_binding == null) return@runOnUiThread
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                showDialScreen()
+            }
+        }
+    }
+
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val bound = (service as? VoipCallService.LocalBinder)?.getService() ?: return
+            voipService = bound
+            if (_binding == null) return
+            binding.tvMyCallId.text = bound.myUserId
+            binding.editMyName.setText(bound.myName)
+            // Replays a ringing/active call, if any, straight into the callbacks above.
+            bound.setUiListener(callListener)
+            // Not covered by CallListener - only relevant to whichever side placed the call.
+            val outgoingCalleeId = bound.callManager.getPendingOutgoingCalleeId()
+            if (outgoingCalleeId != null && binding.layoutDial.visibility == View.VISIBLE) {
+                binding.tvOutgoingStatus.text = "Calling $outgoingCalleeId…"
+                showOutgoing()
+            }
+        }
+        override fun onServiceDisconnected(name: ComponentName?) {
+            voipService = null
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -63,43 +119,11 @@ class VoipCallFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        loadUserData()
+        autoAcceptPending = arguments?.getBoolean("autoAccept", false) ?: false
 
-        callManager = VoipCallManager(requireContext())
-        callManager.listener = object : VoipCallManager.CallListener {
-            override fun onIncomingCall(callId: String, callerId: String, callerName: String) {
-                activity?.runOnUiThread {
-                    if (_binding == null) return@runOnUiThread
-                    currentPeerName = callerName
-                    showIncomingCall(callerName)
-                }
-            }
-            override fun onCallConnected() {
-                activity?.runOnUiThread { if (_binding != null) showInCall() }
-            }
-            override fun onCallEnded(reason: String) {
-                activity?.runOnUiThread {
-                    if (_binding == null) return@runOnUiThread
-                    Toast.makeText(context, reason, Toast.LENGTH_SHORT).show()
-                    showDialScreen()
-                }
-            }
-            override fun onError(message: String) {
-                activity?.runOnUiThread {
-                    if (_binding == null) return@runOnUiThread
-                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                    showDialScreen()
-                }
-            }
-        }
-
-        binding.tvMyCallId.text = myUserId
-        binding.editMyName.setText(myName)
         binding.editMyName.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                myName = s.toString()
-                requireContext().getSharedPreferences(prefsName, Context.MODE_PRIVATE)
-                    .edit().putString(keyMyName, myName).apply()
+                voipService?.setMyName(s.toString())
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -109,48 +133,70 @@ class VoipCallFragment : Fragment() {
         binding.btnCall.setOnClickListener { startOutgoingCall() }
         binding.btnCancelOutgoing.setOnClickListener { hangUp() }
         binding.btnAccept.setOnClickListener { acceptCall() }
-        binding.btnDecline.setOnClickListener { callManager.declineIncomingCall(); showDialScreen() }
+        binding.btnDecline.setOnClickListener { voipService?.callManager?.declineIncomingCall(); showDialScreen() }
         binding.btnEndCall.setOnClickListener { hangUp() }
         binding.btnToggleMute.setOnClickListener { toggleMute() }
         binding.btnToggleSpeaker.setOnClickListener { toggleSpeaker() }
 
-        checkAudioPermission()
-        callManager.startListeningForCalls(myUserId)
+        checkPermissions()
         showDialScreen()
     }
 
-    private fun loadUserData() {
-        val prefs = requireContext().getSharedPreferences(prefsName, Context.MODE_PRIVATE)
-        myUserId = prefs.getString(keyUserId, null) ?: UUID.randomUUID().toString().take(6).uppercase().also {
-            prefs.edit().putString(keyUserId, it).apply()
-        }
-        myName = prefs.getString(keyMyName, null) ?: "User $myUserId"
+    override fun onStart() {
+        super.onStart()
+        val intent = Intent(requireContext(), VoipCallService::class.java)
+        ContextCompat.startForegroundService(requireContext(), intent)
+        requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        serviceBound = true
     }
 
-    private fun checkAudioPermission() {
-        if (!hasAudioPermission()) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), AUDIO_PERMISSION_REQUEST_CODE)
+    override fun onStop() {
+        super.onStop()
+        if (serviceBound) {
+            voipService?.setUiListener(null)
+            requireContext().unbindService(serviceConnection)
+            serviceBound = false
+            voipService = null
+        }
+        // Deliberately not stopping VoipCallService here - it keeps listening for calls in the
+        // background, which is the entire point of it being a foreground service.
+    }
+
+    private fun checkPermissions() {
+        val missing = mutableListOf<String>()
+        if (!hasPermission(Manifest.permission.RECORD_AUDIO)) missing += Manifest.permission.RECORD_AUDIO
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+            missing += Manifest.permission.POST_NOTIFICATIONS
+        }
+        if (missing.isNotEmpty()) {
+            requestPermissions(missing.toTypedArray(), PERMISSION_REQUEST_CODE)
         }
     }
 
-    private fun hasAudioPermission(): Boolean {
-        return ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    private fun hasPermission(permission: String): Boolean {
+        return ActivityCompat.checkSelfPermission(requireContext(), permission) == PackageManager.PERMISSION_GRANTED
     }
+
+    private fun hasAudioPermission(): Boolean = hasPermission(Manifest.permission.RECORD_AUDIO)
 
     private fun startOutgoingCall() {
+        val service = voipService
+        if (service == null) {
+            Toast.makeText(context, "Still connecting - try again in a moment", Toast.LENGTH_SHORT).show()
+            return
+        }
         val calleeId = binding.editCalleeId.text.toString().trim().uppercase()
         when {
             calleeId.isBlank() -> Toast.makeText(context, "Enter a Call ID", Toast.LENGTH_SHORT).show()
-            calleeId == myUserId -> Toast.makeText(context, "That's your own Call ID", Toast.LENGTH_SHORT).show()
+            calleeId == service.myUserId -> Toast.makeText(context, "That's your own Call ID", Toast.LENGTH_SHORT).show()
             !hasAudioPermission() -> {
                 Toast.makeText(context, "Microphone permission is required to call", Toast.LENGTH_SHORT).show()
-                checkAudioPermission()
+                checkPermissions()
             }
             else -> {
-                currentPeerName = calleeId
                 binding.tvOutgoingStatus.text = "Calling $calleeId…"
                 showOutgoing()
-                callManager.startCall(myUserId, myName, calleeId)
+                service.callManager.startCall(service.myUserId, service.myName, calleeId)
             }
         }
     }
@@ -158,18 +204,19 @@ class VoipCallFragment : Fragment() {
     private fun acceptCall() {
         if (!hasAudioPermission()) {
             Toast.makeText(context, "Microphone permission is required to answer", Toast.LENGTH_SHORT).show()
-            checkAudioPermission()
+            checkPermissions()
             return
         }
-        callManager.acceptIncomingCall()
+        voipService?.callManager?.acceptIncomingCall()
     }
 
     private fun hangUp() {
-        callManager.endCall()
+        voipService?.callManager?.endCall()
         showDialScreen()
     }
 
     private fun shareCallId() {
+        val myUserId = voipService?.myUserId ?: return
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, "Call me on NorwinLabsTools! My Call ID: $myUserId")
@@ -179,13 +226,13 @@ class VoipCallFragment : Fragment() {
 
     private fun toggleMute() {
         isMuted = !isMuted
-        callManager.setMuted(isMuted)
+        voipService?.callManager?.setMuted(isMuted)
         binding.btnToggleMute.text = if (isMuted) "Unmute" else "Mute"
     }
 
     private fun toggleSpeaker() {
         isSpeakerOn = !isSpeakerOn
-        callManager.setSpeakerphoneOn(isSpeakerOn)
+        voipService?.callManager?.setSpeakerphoneOn(isSpeakerOn)
         binding.btnToggleSpeaker.text = if (isSpeakerOn) "Speaker Off" else "Speaker"
     }
 
@@ -200,7 +247,6 @@ class VoipCallFragment : Fragment() {
         isSpeakerOn = false
         binding.btnToggleMute.text = "Mute"
         binding.btnToggleSpeaker.text = "Speaker"
-        currentPeerName = ""
     }
 
     private fun showOutgoing() {
@@ -220,24 +266,23 @@ class VoipCallFragment : Fragment() {
 
     private fun showInCall() {
         if (binding.layoutInCall.visibility == View.VISIBLE) return
-        binding.tvInCallName.text = currentPeerName
+        binding.tvInCallName.text = voipService?.callManager?.getCurrentPeerName() ?: ""
         binding.layoutDial.visibility = View.GONE
         binding.layoutOutgoing.visibility = View.GONE
         binding.layoutIncoming.visibility = View.GONE
         binding.layoutInCall.visibility = View.VISIBLE
         callStartTime = System.currentTimeMillis()
         durationHandler.post(durationTicker)
-        callManager.setSpeakerphoneOn(false)
+        voipService?.callManager?.setSpeakerphoneOn(false)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         durationHandler.removeCallbacks(durationTicker)
-        callManager.release()
         _binding = null
     }
 
     companion object {
-        private const val AUDIO_PERMISSION_REQUEST_CODE = 2001
+        private const val PERMISSION_REQUEST_CODE = 2001
     }
 }
