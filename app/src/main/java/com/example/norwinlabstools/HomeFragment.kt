@@ -62,11 +62,12 @@ class HomeFragment : Fragment() {
         Tool(27, "Circle Share", android.R.drawable.ic_menu_share, "1.0.0", 0xFF2196F3.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop", category = "Maps & Location"),
         // No background photo: dedupes what used to be an identical image shared by three cards.
         Tool(28, "Data Centers", android.R.drawable.ic_menu_mapmode, "1.0.0", 0xFF00838F.toInt(), category = "Maps & Location"),
-        Tool(29, "Flock Cameras", android.R.drawable.ic_menu_camera, "1.0.0", 0xFF6A1B9A.toInt(), category = "Maps & Location")
+        Tool(29, "Flock Cameras", android.R.drawable.ic_menu_camera, "1.0.0", 0xFF6A1B9A.toInt(), category = "Maps & Location"),
+        Tool(30, "VoIP Calling", android.R.drawable.ic_menu_call, "1.0.0", 0xFF00897B.toInt(), category = "Communication")
     )
 
     // Controls section order in the "Add Tool" sheet; anything with an unlisted category sorts last.
-    private val categoryOrder = listOf("Maps & Location", "Network Tools", "Dev Tools", "Windhelm", "Personal", "System")
+    private val categoryOrder = listOf("Communication", "Maps & Location", "Network Tools", "Dev Tools", "Windhelm", "Personal", "System")
 
     private var currentTools = mutableListOf<Tool>()
 
@@ -135,6 +136,7 @@ class HomeFragment : Fragment() {
                         27 -> findNavController().navigate(R.id.action_HomeFragment_to_CircleShareFragment)
                         28 -> findNavController().navigate(R.id.action_HomeFragment_to_DataCenterMapFragment)
                         29 -> findNavController().navigate(R.id.action_HomeFragment_to_FlockCameraMapFragment)
+                        30 -> findNavController().navigate(R.id.action_HomeFragment_to_VoipCallFragment)
                         else -> {
                              AlertDialog.Builder(requireContext())
                                 .setTitle(tool.name)

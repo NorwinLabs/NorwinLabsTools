@@ -65,6 +65,9 @@
         <action
             android:id="@+id/action_HomeFragment_to_PingToolFragment"
             app:destination="@id/PingToolFragment" />
+        <action
+            android:id="@+id/action_HomeFragment_to_VoipCallFragment"
+            app:destination="@id/VoipCallFragment" />
     </fragment>
     
     <fragment
@@ -181,5 +184,16 @@
         android:name="com.example.norwinlabstools.PingToolFragment"
         android:label="Ping Tool"
         tools:layout="@layout/fragment_ping_tool" />
+
+    <fragment
+        android:id="@+id/VoipCallFragment"
+        android:name="com.example.norwinlabstools.VoipCallFragment"
+        android:label="VoIP Calling"
+        tools:layout="@layout/fragment_voip_call">
+        <argument
+            android:name="autoAccept"
+            app:argType="boolean"
+            android:defaultValue="false" />
+    </fragment>
 
 </navigation>

@@ -8,6 +8,13 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- VoIP Calling foreground service (keeps listening for incoming calls in the background) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Nearby Connections & P2P Permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -57,6 +64,16 @@
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
+        <service
+            android:name=".VoipCallService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Listens for incoming VoIP calls signaled via Firebase so they can still be answered or declined while the app is backgrounded." />
+        </service>
 
         <receiver android:name=".WindhelmWidgetProvider"
             android:exported="false">
