@@ -8,6 +8,8 @@ import java.util.Locale
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     id("com.google.gms.google-services")
 }
 
@@ -45,7 +47,10 @@ val buildTimestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).fo
 
 android {
     namespace = "com.example.norwinlabstools"
-    compileSdk = 35
+    // Compiling against 36 is required by current AndroidX (core-ktx 1.17, appcompat 1.7).
+    // targetSdk stays at 35 deliberately: raising it changes runtime behaviour and belongs
+    // with the UI work, not with a dependency bump.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.norwinlabstools"
@@ -101,6 +106,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     applicationVariants.all {
@@ -186,7 +192,24 @@ dependencies {
     // VoIP Calling
     implementation(libs.stream.webrtc)
 
+    // Dependency injection
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.fragment)
+
+    // Persistence
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.datastore.preferences)
+
+    // Lifecycle / coroutines
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.kotlinx.coroutines.android)
+
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
