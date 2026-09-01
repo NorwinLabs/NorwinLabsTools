@@ -1,26 +1,27 @@
 package com.example.norwinlabstools
 
-import android.content.Context
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.example.norwinlabstools.databinding.FragmentSettingsBinding
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class SettingsFragment : Fragment() {
 
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
 
-    private val PREFS_NAME = "norwin_prefs"
-    private val KEY_THEME = "app_theme"
-    private val KEY_BIOMETRIC = "enable_biometric"
-    private val KEY_AI_ANALYSIS = "enable_ai_analysis"
-    private val KEY_API_KEY = "gemini_api_key"
+    private val viewModel: SettingsViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -33,47 +34,44 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        
-        // Theme Setup
-        val savedTheme = prefs.getInt(KEY_THEME, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-        when (savedTheme) {
+        // Bind once per view, from the first real value. Re-applying on every emission would
+        // fight the user's typing, and re-running on each STARTED would stack a second text
+        // watcher every time the screen came back from the background.
+        viewLifecycleOwner.lifecycleScope.launch {
+            bind(viewModel.uiState.filterNotNull().first())
+        }
+    }
+
+    private fun bind(state: SettingsUiState) {
+        when (state.themeMode) {
             AppCompatDelegate.MODE_NIGHT_NO -> binding.radioLight.isChecked = true
             AppCompatDelegate.MODE_NIGHT_YES -> binding.radioDark.isChecked = true
             else -> binding.radioSystem.isChecked = true
         }
+        binding.switchBiometric.isChecked = state.biometricEnabled
+        binding.switchAiAnalysis.isChecked = state.aiAnalysisEnabled
+        binding.editApiKey.setText(state.geminiApiKey)
 
+        // Listeners are attached only after the initial values are in place, so restoring state
+        // can't be mistaken for the user changing it.
         binding.radioGroupTheme.setOnCheckedChangeListener { _, checkedId ->
-            val mode = when (checkedId) {
-                R.id.radio_light -> AppCompatDelegate.MODE_NIGHT_NO
-                R.id.radio_dark -> AppCompatDelegate.MODE_NIGHT_YES
-                else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-            }
-            prefs.edit().putInt(KEY_THEME, mode).apply()
-            AppCompatDelegate.setDefaultNightMode(mode)
+            viewModel.setThemeMode(
+                when (checkedId) {
+                    R.id.radio_light -> AppCompatDelegate.MODE_NIGHT_NO
+                    R.id.radio_dark -> AppCompatDelegate.MODE_NIGHT_YES
+                    else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                }
+            )
         }
-
-        // Biometric Switch
-        binding.switchBiometric.isChecked = prefs.getBoolean(KEY_BIOMETRIC, false)
         binding.switchBiometric.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean(KEY_BIOMETRIC, isChecked).apply()
+            viewModel.setBiometricEnabled(isChecked)
         }
-
-        // AI Analysis Switch
-        binding.switchAiAnalysis.isChecked = prefs.getBoolean(KEY_AI_ANALYSIS, true)
         binding.switchAiAnalysis.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean(KEY_AI_ANALYSIS, isChecked).apply()
+            viewModel.setAiAnalysisEnabled(isChecked)
         }
-
-        // API Key Field
-        binding.editApiKey.setText(prefs.getString(KEY_API_KEY, ""))
-        binding.editApiKey.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                prefs.edit().putString(KEY_API_KEY, s.toString()).apply()
-            }
-        })
+        binding.editApiKey.doAfterTextChanged { text ->
+            viewModel.setGeminiApiKey(text?.toString().orEmpty())
+        }
     }
 
     override fun onDestroyView() {

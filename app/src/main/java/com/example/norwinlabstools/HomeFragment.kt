@@ -19,12 +19,17 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
+import com.example.norwinlabstools.data.SettingsRepository
 import com.example.norwinlabstools.databinding.FragmentHomeBinding
 import com.example.norwinlabstools.databinding.LayoutAddToolsBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
@@ -32,10 +37,12 @@ class HomeFragment : Fragment() {
     private lateinit var adapter: ToolsAdapter
     private var aiManager: VideoIdeaManager? = null
 
+    @Inject lateinit var settingsRepository: SettingsRepository
+
+    // The saved Home layout still lives in SharedPreferences; it moves to the data layer with the
+    // Home ViewModel rather than here, where only the settings keys were migrated.
     private val PREFS_NAME = "norwin_prefs"
     private val KEY_HOME_TOOLS = "home_tools_ids"
-    private val KEY_BIOMETRIC = "enable_biometric"
-    private val KEY_API_KEY = "gemini_api_key"
 
     private var currentTools = mutableListOf<Tool>()
 
@@ -171,11 +178,15 @@ class HomeFragment : Fragment() {
     }
 
     private fun checkBiometricAndNavigate(destinationId: Int) {
-        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val isBiometricEnabled = prefs.getBoolean(KEY_BIOMETRIC, false)
-        val biometricHelper = BiometricHelper(requireActivity())
+        viewLifecycleOwner.lifecycleScope.launch {
+            val isBiometricEnabled = settingsRepository.biometricEnabled.first()
+            val biometricHelper = BiometricHelper(requireActivity())
 
-        if (isBiometricEnabled && biometricHelper.canAuthenticate()) {
+            if (!isBiometricEnabled || !biometricHelper.canAuthenticate()) {
+                findNavController().navigate(destinationId)
+                return@launch
+            }
+
             biometricHelper.showBiometricPrompt(
                 "Restricted Tool",
                 "Authentication Required",
@@ -192,8 +203,6 @@ class HomeFragment : Fragment() {
                     }
                 }
             )
-        } else {
-            findNavController().navigate(destinationId)
         }
     }
 
@@ -221,32 +230,31 @@ class HomeFragment : Fragment() {
     }
 
     private fun generateAIVideoIdea(isShort: Boolean, category: String) {
-        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val apiKey = prefs.getString(KEY_API_KEY, "") ?: ""
-        
-        if (apiKey.isEmpty()) {
-            AlertDialog.Builder(requireContext())
-                .setTitle("API Key Required")
-                .setMessage("Please set your Gemini API key in Settings to use AI features.")
-                .setPositiveButton("Go to Settings") { _, _ ->
-                    findNavController().navigate(R.id.action_HomeFragment_to_SettingsFragment)
-                }
-                .setNegativeButton("Cancel", null)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val apiKey = settingsRepository.geminiApiKey.first()
+
+            if (apiKey.isEmpty()) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("API Key Required")
+                    .setMessage("Please set your Gemini API key in Settings to use AI features.")
+                    .setPositiveButton("Go to Settings") { _, _ ->
+                        findNavController().navigate(R.id.action_HomeFragment_to_SettingsFragment)
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+                return@launch
+            }
+
+            if (aiManager == null) {
+                aiManager = VideoIdeaManager(apiKey)
+            }
+
+            val loadingDialog = AlertDialog.Builder(requireContext())
+                .setTitle("Consulting AI...")
+                .setMessage("Generating a custom idea for $category...")
+                .setCancelable(false)
                 .show()
-            return
-        }
 
-        if (aiManager == null) {
-            aiManager = VideoIdeaManager(apiKey)
-        }
-
-        val loadingDialog = AlertDialog.Builder(requireContext())
-            .setTitle("Consulting AI...")
-            .setMessage("Generating a custom idea for $category...")
-            .setCancelable(false)
-            .show()
-
-        lifecycleScope.launch {
             aiManager?.generateIdea(isShort, category, object : VideoIdeaManager.VideoIdeaCallback {
                 override fun onSuccess(idea: String) {
                     loadingDialog.dismiss()

@@ -21,8 +21,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.norwinlabstools.data.SettingsRepository
 import com.example.norwinlabstools.databinding.FragmentNetScannerBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -33,7 +36,9 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.Locale
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class NetScannerFragment : Fragment() {
 
     private var _binding: FragmentNetScannerBinding? = null
@@ -45,9 +50,7 @@ class NetScannerFragment : Fragment() {
     private var wifiManager: WifiManager? = null
     private val client = OkHttpClient()
 
-    private val PREFS_NAME = "norwin_prefs"
-    private val KEY_AI_ANALYSIS = "enable_ai_analysis"
-    private val KEY_API_KEY = "gemini_api_key"
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     data class ScannedDevice(
         val ip: String,
@@ -277,13 +280,14 @@ class NetScannerFragment : Fragment() {
         }
     }
 
-    private fun analyzeDeviceSecurity(device: ScannedDevice, findings: List<String>) {
-        val context = context ?: return
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val apiKey = prefs.getString(KEY_API_KEY, "") ?: ""
+    private suspend fun analyzeDeviceSecurity(device: ScannedDevice, findings: List<String>) {
+        val apiKey = settingsRepository.geminiApiKey.first()
+        val aiEnabled = settingsRepository.aiAnalysisEnabled.first()
 
-        if (prefs.getBoolean(KEY_AI_ANALYSIS, true) && findings.isNotEmpty() && apiKey.isNotEmpty()) {
+        if (aiEnabled && findings.isNotEmpty() && apiKey.isNotEmpty()) {
             if (aiManager == null) aiManager = SecurityAIManager(apiKey)
+            // Launched rather than awaited: the port scan has to keep moving while the model
+            // takes its time, which is what the previous SharedPreferences version did too.
             lifecycleScope.launch {
                 aiManager?.analyzeVulnerabilities(device.ip, findings, object : SecurityAIManager.SecurityCallback {
                     override fun onSuccess(analysis: String) {
