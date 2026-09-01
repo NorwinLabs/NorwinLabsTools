@@ -19,6 +19,7 @@ generativeai = "0.9.0"
 biometric = "1.1.0"
 playServicesNearby = "19.3.0"
 firebaseDatabase = "21.0.0"
+firebaseAuth = "23.2.0"
 osmdroid = "6.1.20"
 ucrop = "2.2.11"
 jsch = "0.1.55"
@@ -49,6 +50,7 @@ generativeai = { group = "com.google.ai.client.generativeai", name = "generative
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 play-services-nearby = { group = "com.google.android.gms", name = "play-services-nearby", version.ref = "playServicesNearby" }
 firebase-database = { group = "com.google.firebase", name = "firebase-database-ktx", version.ref = "firebaseDatabase" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx", version.ref = "firebaseAuth" }
 osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 ucrop = { group = "com.github.yalantis", name = "ucrop", version.ref = "ucrop" }
 jsch = { group = "com.jcraft", name = "jsch", version.ref = "jsch" }

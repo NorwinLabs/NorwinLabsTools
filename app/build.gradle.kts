@@ -221,6 +221,7 @@ dependencies {
     
     // Firebase
     implementation(libs.firebase.database)
+    implementation(libs.firebase.auth)
 
     // Nearby Connections (P2P)
     implementation(libs.play.services.nearby)
