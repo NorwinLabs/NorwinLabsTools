@@ -1,6 +1,6 @@
 # Release signing
 
-## Why the key was rotated
+## Why the key must be rotated
 
 `app/norwin.keystore.jks` was committed to this repository, which is public, and its
 passwords were in plain text in `app/build.gradle.kts`. Anyone who cloned the repo could
@@ -10,11 +10,27 @@ treated as compromised and permanently retired.
 It was also used to sign *debug* builds, which is what forced it into the repo. Debug now
 uses the local SDK debug key instead, so the release key has no reason to be here.
 
-Rotating the signing key means existing installs cannot update in place and must reinstall.
-That cost is already being paid by the `applicationId` change needed to leave `com.example.*`,
-so doing both at once costs one reinstall rather than two.
+## Current decision: the old key is still in use
 
-## 1. Generate a new key
+Rotation is deliberately **deferred to the `applicationId` change**, not done now.
+
+The app ID is unchanged today, so a new key would make Android reject the in-app update as a
+signature mismatch: existing installs would download the update and fail to install it, then need
+an uninstall and reinstall. The move off `com.example.*` forces exactly that same reinstall
+anyway. Rotating now therefore costs users two disruptions; rotating at the app-ID change costs
+one.
+
+The trade is that until then, releases are signed with a key whose passphrase is public. Anyone
+can build an APK Android will accept as an update to this app - which matters more than usual
+because the app itself teaches users to sideload updates. **Keep the window short.** The moment
+the new `applicationId` and its `google-services.json` are ready, generate a new key and ship both
+together.
+
+Until then the four secrets below hold the *old* key: alias `norwin-key`, passphrase `android`.
+Those are already public in git history, so putting them in Actions secrets loses nothing; it
+just keeps the keystore itself out of the working tree and the build file.
+
+## 1. Generate a new key (at the applicationId change)
 
 Run this yourself - the password must never be pasted into a chat, an issue, or a commit.
 Keep the file **outside** the repository.

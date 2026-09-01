@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Lets a release be re-run after adding or rotating the signing secrets, without
+  # needing an empty commit to main to trigger it.
+  workflow_dispatch:
 
 jobs:
   lint:
