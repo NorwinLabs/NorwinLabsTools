@@ -1,7 +1,6 @@
 package com.example.norwinlabstools
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -39,12 +38,7 @@ class HomeFragment : Fragment() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
 
-    // The saved Home layout still lives in SharedPreferences; it moves to the data layer with the
-    // Home ViewModel rather than here, where only the settings keys were migrated.
-    private val PREFS_NAME = "norwin_prefs"
-    private val KEY_HOME_TOOLS = "home_tools_ids"
-
-    private var currentTools = mutableListOf<Tool>()
+    private val currentTools = mutableListOf<Tool>()
 
     private val backPressedCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -58,7 +52,6 @@ class HomeFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        loadHomeTools()
         requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
     }
 
@@ -100,6 +93,8 @@ class HomeFragment : Fragment() {
 
         binding.recyclerviewTools.layoutManager = GridLayoutManager(context, 2)
         binding.recyclerviewTools.adapter = adapter
+
+        loadHomeTools()
 
         setupDragAndDrop()
 
@@ -412,21 +407,22 @@ class HomeFragment : Fragment() {
     }
 
     private fun saveHomeTools() {
-        val ids = adapter.getItems().joinToString(",") { it.id.toString() }
-        requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString(KEY_HOME_TOOLS, ids).apply()
+        val ids = adapter.getItems().map { it.id }
+        viewLifecycleOwner.lifecycleScope.launch { settingsRepository.setHomeToolIds(ids) }
     }
 
+    /**
+     * Reads the saved layout off the main thread, then fills the grid. The list is only loaded
+     * once rather than observed: the adapter owns the order while the user is dragging tiles
+     * around, so re-submitting it from the store mid-gesture would fight them.
+     */
     private fun loadHomeTools() {
-        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val savedIds = prefs.getString(KEY_HOME_TOOLS, null)
-        currentTools.clear()
-        if (savedIds != null) {
-            // toIntOrNull rather than toInt: a malformed prefs entry should drop that one tool,
-            // not crash Home on launch.
-            val idList = savedIds.split(",").mapNotNull { it.toIntOrNull() }
-            currentTools.addAll(ToolRegistry.byIds(idList))
-        } else {
-            currentTools.addAll(ToolRegistry.all.take(4))
+        viewLifecycleOwner.lifecycleScope.launch {
+            val savedIds = settingsRepository.homeToolIds.first()
+            adapter.setTools(
+                if (savedIds == null) ToolRegistry.all.take(DEFAULT_HOME_TOOL_COUNT)
+                else ToolRegistry.byIds(savedIds)
+            )
         }
     }
 
@@ -448,5 +444,10 @@ class HomeFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private companion object {
+        /** What a brand new install starts with before the user customises Home. */
+        const val DEFAULT_HOME_TOOL_COUNT = 4
     }
 }

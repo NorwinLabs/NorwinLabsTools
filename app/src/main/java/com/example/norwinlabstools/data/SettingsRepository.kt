@@ -41,6 +41,19 @@ class SettingsRepository @Inject constructor(
 
     val geminiApiKey: Flow<String> = preferences.map { it[Keys.API_KEY].orEmpty() }
 
+    /**
+     * The tools on the Home grid, in the user's order.
+     *
+     * Null means "never customised", which is not the same as an empty list: a user who removes
+     * every tool should get an empty Home, not the default set handed back to them.
+     */
+    val homeToolIds: Flow<List<Int>?> = preferences.map { prefs ->
+        prefs[Keys.HOME_TOOLS]?.split(",")?.mapNotNull { it.toIntOrNull() }
+    }
+
+    suspend fun setHomeToolIds(ids: List<Int>) =
+        edit { it[Keys.HOME_TOOLS] = ids.joinToString(",") }
+
     suspend fun setThemeMode(mode: Int) = edit { it[Keys.THEME] = mode }
 
     suspend fun setBiometricEnabled(enabled: Boolean) = edit { it[Keys.BIOMETRIC] = enabled }
@@ -62,7 +75,9 @@ class SettingsRepository @Inject constructor(
         val BIOMETRIC = booleanPreferencesKey("enable_biometric")
         val AI_ANALYSIS = booleanPreferencesKey("enable_ai_analysis")
         val API_KEY = stringPreferencesKey("gemini_api_key")
+        val HOME_TOOLS = stringPreferencesKey("home_tools_ids")
 
-        val ALL_NAMES = setOf(THEME.name, BIOMETRIC.name, AI_ANALYSIS.name, API_KEY.name)
+        val ALL_NAMES =
+            setOf(THEME.name, BIOMETRIC.name, AI_ANALYSIS.name, API_KEY.name, HOME_TOOLS.name)
     }
 }

@@ -19,9 +19,8 @@ import javax.inject.Singleton
 /**
  * Settings store.
  *
- * Only the settings keys are migrated out of the legacy "norwin_prefs" file - the Home screen's
- * saved tool layout still lives there and is left alone, so this migration must never be widened
- * to the whole file.
+ * Migrates the specific keys the app owns out of the legacy "norwin_prefs" file, by their
+ * original names, so existing users keep their settings and their Home layout.
  */
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "settings",

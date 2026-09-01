@@ -72,6 +72,14 @@ class ToolsAdapter(
         toolsFull = ArrayList(tools)
     }
 
+    /** Replaces the whole list, for the initial load once the saved layout has been read. */
+    fun setTools(newTools: List<Tool>) {
+        tools.clear()
+        tools.addAll(newTools)
+        toolsFull = ArrayList(tools)
+        notifyDataSetChanged()
+    }
+
     fun addTool(tool: Tool) {
         tools.add(tool)
         toolsFull = ArrayList(tools)
