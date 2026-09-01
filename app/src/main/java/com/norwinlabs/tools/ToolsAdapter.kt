@@ -14,7 +14,6 @@ class ToolsAdapter(
     private val onRemoveClick: (Tool) -> Unit
 ) : RecyclerView.Adapter<ToolsAdapter.ToolViewHolder>() {
 
-    private var toolsFull = ArrayList(tools)
     var isEditMode = false
         set(value) {
             field = value
@@ -47,17 +46,6 @@ class ToolsAdapter(
 
     override fun getItemCount(): Int = tools.size
 
-    fun filter(query: String) {
-        val filteredList = if (query.isEmpty()) {
-            toolsFull
-        } else {
-            toolsFull.filter { it.name.lowercase().contains(query.lowercase()) }
-        }
-        tools.clear()
-        tools.addAll(filteredList)
-        notifyDataSetChanged()
-    }
-
     fun onItemMove(fromPosition: Int, toPosition: Int) {
         if (fromPosition < toPosition) {
             for (i in fromPosition until toPosition) {
@@ -69,20 +57,17 @@ class ToolsAdapter(
             }
         }
         notifyItemMoved(fromPosition, toPosition)
-        toolsFull = ArrayList(tools)
     }
 
     /** Replaces the whole list, for the initial load once the saved layout has been read. */
     fun setTools(newTools: List<Tool>) {
         tools.clear()
         tools.addAll(newTools)
-        toolsFull = ArrayList(tools)
         notifyDataSetChanged()
     }
 
     fun addTool(tool: Tool) {
         tools.add(tool)
-        toolsFull = ArrayList(tools)
         notifyItemInserted(tools.size - 1)
     }
 
@@ -90,7 +75,6 @@ class ToolsAdapter(
         val position = tools.indexOf(tool)
         if (position != -1) {
             tools.removeAt(position)
-            toolsFull = ArrayList(tools)
             notifyItemRemoved(position)
         }
     }

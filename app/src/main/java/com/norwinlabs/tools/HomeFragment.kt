@@ -142,11 +142,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    fun filterTools(query: String) {
-        adapter.filter(query)
-        binding.textviewNoToolsFound.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
-    }
-
     private fun updateToolbar() {
         val activity = activity as? MainActivity ?: return
         if (adapter.isEditMode) {

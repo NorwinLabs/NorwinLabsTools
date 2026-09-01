@@ -27,7 +27,6 @@ class ToolsFragment : Fragment() {
     @Inject lateinit var settingsRepository: SettingsRepository
 
     private lateinit var launcher: ToolLauncher
-    private var query: String = ""
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -40,31 +39,14 @@ class ToolsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         launcher = ToolLauncher(this, settingsRepository)
-        showTools(query)
+        showTools()
     }
 
-    /** Called by MainActivity as the toolbar search text changes. */
-    fun filterTools(query: String) {
-        this.query = query
-        if (_binding != null) showTools(query)
-    }
-
-    private fun showTools(query: String) {
-        val matches = if (query.isBlank()) {
-            ToolRegistry.all
-        } else {
-            ToolRegistry.all.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                    it.category.contains(query, ignoreCase = true)
-            }
-        }
-
-        binding.tvNoTools.visibility = if (matches.isEmpty()) View.VISIBLE else View.GONE
-
-        // Rebuilt rather than filtered in place: the adapter groups into category sections at
-        // construction, and for a couple of dozen tools rebuilding is cheaper than keeping a
-        // second mutable representation of the section list in sync.
-        val adapter = CategorizedToolsAdapter(matches, ToolRegistry.categoryOrder) { launcher.open(it) }
+    private fun showTools() {
+        // Filtering lives in SearchFragment now, which searches tool contents too; this screen
+        // is the full catalogue.
+        val adapter =
+            CategorizedToolsAdapter(ToolRegistry.all, ToolRegistry.categoryOrder) { launcher.open(it) }
         val spanCount = resources.getInteger(R.integer.tools_span_count)
 
         binding.rvTools.layoutManager = GridLayoutManager(context, spanCount).apply {

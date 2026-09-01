@@ -8,7 +8,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.SearchView
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
@@ -82,29 +81,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
-        
-        val searchItem = menu.findItem(R.id.action_search)
-        val searchView = searchItem.actionView as SearchView
-        
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean = false
-            override fun onQueryTextChange(newText: String?): Boolean {
-                val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main)
-                val query = newText.orEmpty()
-                when (val current = navHostFragment?.childFragmentManager?.fragments?.firstOrNull()) {
-                    is HomeFragment -> current.filterTools(query)
-                    is ToolsFragment -> current.filterTools(query)
-                    else -> Unit
-                }
-                return true
-            }
-        })
-        
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.action_search -> {
+                findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.SearchFragment)
+                true
+            }
             R.id.action_settings -> {
                 findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.SettingsFragment)
                 true
