@@ -22,9 +22,12 @@ misc.xml
 deploymentTargetDropDown.xml
 render.experimental.xml
 
-# Keystore files
-# Commenting this out to allow syncing the debug key across PCs
-# *.keystore
+# Signing material. The release keystore and its credentials must never be
+# committed - they are supplied by keystore.properties locally and by repository
+# secrets on CI. See keystore.properties.example.
+*.keystore
+*.jks
+keystore.properties
 
 # Google Services (e.g. APIs or Firebase)
 # google-services.json
