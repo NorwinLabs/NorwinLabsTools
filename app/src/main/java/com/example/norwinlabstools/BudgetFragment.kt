@@ -11,10 +11,14 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.norwinlabstools.databinding.FragmentBudgetBinding
 import com.example.norwinlabstools.databinding.ItemBudgetCategoryBinding
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
@@ -33,6 +37,7 @@ class BudgetFragment : Fragment() {
     
     private var monthlyIncome = 0.0
     private lateinit var allocationAdapter: AllocationAdapter
+    private var saveJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -81,14 +86,32 @@ class BudgetFragment : Fragment() {
         }
 
         binding.pieChart.setData(monthlyIncome, categories)
-        saveData()
+        scheduleSave()
     }
 
+    /**
+     * Every amount field recalculates on each keystroke, and saving used to be part of that -
+     * so typing "1200" serialised the whole category list to JSON and wrote it to disk four
+     * times. Coalesce those into one write once typing stops, and flush on the way out so
+     * nothing is lost by leaving quickly.
+     */
+    private fun scheduleSave() {
+        saveJob?.cancel()
+        saveJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(SAVE_DEBOUNCE_MS)
+            saveData()
+        }
+    }
+
+    /**
+     * apply() already hands the disk write to a background thread, so the only main-thread cost
+     * here is building the JSON - negligible for a handful of categories once it is no longer
+     * happening on every keystroke. Deliberately not a coroutine: this also runs from onPause,
+     * where a cancelled scope could drop the final save.
+     */
     private fun saveData() {
-        val prefs = requireContext().getSharedPreferences("BudgetPrefs", Context.MODE_PRIVATE)
-        val editor = prefs.edit()
-        editor.putFloat("monthly_income", monthlyIncome.toFloat())
-        
+        val context = context?.applicationContext ?: return
+
         val jsonArray = JSONArray()
         categories.forEach { category ->
             val jsonObject = JSONObject()
@@ -97,8 +120,11 @@ class BudgetFragment : Fragment() {
             jsonObject.put("color", category.color)
             jsonArray.put(jsonObject)
         }
-        editor.putString("categories_json", jsonArray.toString())
-        editor.apply()
+
+        context.getSharedPreferences("BudgetPrefs", Context.MODE_PRIVATE).edit()
+            .putFloat("monthly_income", monthlyIncome.toFloat())
+            .putString("categories_json", jsonArray.toString())
+            .apply()
     }
 
     private fun loadData() {
@@ -106,18 +132,24 @@ class BudgetFragment : Fragment() {
         monthlyIncome = prefs.getFloat("monthly_income", 0.0f).toDouble()
         binding.editIncome.setText(if (monthlyIncome > 0) String.format(Locale.US, "%.2f", monthlyIncome) else "")
         
-        val jsonString = prefs.getString("categories_json", null)
-        if (jsonString != null) {
-            categories.clear()
-            val jsonArray = JSONArray(jsonString)
+        val jsonString = prefs.getString("categories_json", null) ?: return
+        // A malformed entry should cost one category, not take the screen down on open.
+        val jsonArray = runCatching { JSONArray(jsonString) }.getOrNull() ?: return
+        val restored = buildList {
             for (i in 0 until jsonArray.length()) {
-                val jsonObject = jsonArray.getJSONObject(i)
-                categories.add(BudgetCategory(
-                    jsonObject.getString("name"),
-                    jsonObject.getDouble("amount"),
-                    jsonObject.getInt("color")
-                ))
+                val jsonObject = jsonArray.optJSONObject(i) ?: continue
+                add(
+                    BudgetCategory(
+                        jsonObject.optString("name", "Unnamed"),
+                        jsonObject.optDouble("amount", 0.0),
+                        jsonObject.optInt("color", 0xFF9E9E9E.toInt()),
+                    )
+                )
             }
+        }
+        if (restored.isNotEmpty()) {
+            categories.clear()
+            categories.addAll(restored)
         }
     }
 
@@ -169,8 +201,13 @@ class BudgetFragment : Fragment() {
             
             val watcher = object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
+                    // bindingAdapterPosition returns NO_POSITION while the row is animating or
+                    // detached; indexing with that crashed. Re-read the row rather than reusing
+                    // the captured item, which may be stale after a reorder.
+                    val position = holder.bindingAdapterPosition
+                    if (position == RecyclerView.NO_POSITION) return
                     val newVal = s.toString().toDoubleOrNull() ?: 0.0
-                    items[holder.adapterPosition] = item.copy(amount = newVal)
+                    items[position] = items[position].copy(amount = newVal)
                     onAmountChanged()
                 }
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -183,8 +220,22 @@ class BudgetFragment : Fragment() {
         override fun getItemCount() = items.size
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Flush whatever the debounce is still holding before the screen goes away.
+        saveJob?.cancel()
+        saveJob = null
+        saveData()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
+        saveJob?.cancel()
+        saveJob = null
         _binding = null
+    }
+
+    private companion object {
+        const val SAVE_DEBOUNCE_MS = 400L
     }
 }
