@@ -12,8 +12,14 @@ enum class ToolTier { FREE, PRO }
 
 /** What tapping a tool card does. */
 sealed interface ToolAction {
-    /** Navigate to a destination in nav_graph via the given action id. */
-    data class Navigate(@IdRes val actionId: Int) : ToolAction
+    /**
+     * Navigate to a destination in nav_graph.
+     *
+     * A destination id rather than an action id: actions are scoped to the screen that declares
+     * them, so an action id would only ever work from Home. Destinations are global, which is
+     * what lets any screen open any tool.
+     */
+    data class Navigate(@IdRes val destinationId: Int) : ToolAction
 
     /** Hand off to the browser. */
     data class OpenUrl(val url: String) : ToolAction

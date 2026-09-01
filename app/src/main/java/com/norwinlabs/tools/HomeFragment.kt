@@ -151,8 +151,8 @@ class HomeFragment : Fragment() {
     private fun openTool(tool: Tool) {
         when (val action = tool.action) {
             is ToolAction.Navigate ->
-                if (tool.requiresBiometric) checkBiometricAndNavigate(action.actionId)
-                else findNavController().navigate(action.actionId)
+                if (tool.requiresBiometric) checkBiometricAndNavigate(action.destinationId)
+                else findNavController().navigate(action.destinationId)
 
             is ToolAction.OpenUrl ->
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(action.url)))
@@ -233,7 +233,7 @@ class HomeFragment : Fragment() {
                     .setTitle("API Key Required")
                     .setMessage("Please set your Gemini API key in Settings to use AI features.")
                     .setPositiveButton("Go to Settings") { _, _ ->
-                        findNavController().navigate(R.id.action_HomeFragment_to_SettingsFragment)
+                        findNavController().navigate(R.id.SettingsFragment)
                     }
                     .setNegativeButton("Cancel", null)
                     .show()

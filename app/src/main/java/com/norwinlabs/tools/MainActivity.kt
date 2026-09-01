@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_settings -> {
-                findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.action_HomeFragment_to_SettingsFragment)
+                findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.SettingsFragment)
                 true
             }
             R.id.action_windhelm -> {
