@@ -25,6 +25,7 @@ import javax.inject.Singleton
 @Singleton
 class SettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
+    private val themeMirror: ThemeMirror,
 ) {
 
     private val preferences: Flow<Preferences> = dataStore.data
@@ -54,7 +55,11 @@ class SettingsRepository @Inject constructor(
     suspend fun setHomeToolIds(ids: List<Int>) =
         edit { it[Keys.HOME_TOOLS] = ids.joinToString(",") }
 
-    suspend fun setThemeMode(mode: Int) = edit { it[Keys.THEME] = mode }
+    suspend fun setThemeMode(mode: Int) {
+        edit { it[Keys.THEME] = mode }
+        // Startup needs this synchronously, before DataStore can answer. See ThemeStartup.
+        themeMirror.write(mode)
+    }
 
     suspend fun setBiometricEnabled(enabled: Boolean) = edit { it[Keys.BIOMETRIC] = enabled }
 

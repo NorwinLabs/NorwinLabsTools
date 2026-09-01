@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.norwinlabs.tools.data.SettingsRepository
+import com.norwinlabs.tools.data.ThemeMirror
+import com.norwinlabs.tools.data.ThemeStartup
 import com.norwinlabs.tools.data.db.NoteDao
 import com.norwinlabs.tools.data.db.NorwinDatabase
 import dagger.Module
@@ -46,6 +48,11 @@ object DataModule {
     fun provideSettingsDataStore(
         @ApplicationContext context: Context,
     ): DataStore<Preferences> = context.settingsDataStore
+
+    @Provides
+    @Singleton
+    fun provideThemeMirror(@ApplicationContext context: Context): ThemeMirror =
+        ThemeMirror { mode -> ThemeStartup.mirror(context, mode) }
 
     @Provides
     @Singleton

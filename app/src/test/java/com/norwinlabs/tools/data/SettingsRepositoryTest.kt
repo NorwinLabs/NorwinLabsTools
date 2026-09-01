@@ -28,6 +28,7 @@ class SettingsRepositoryTest {
 
     private lateinit var testScope: TestScope
     private lateinit var repository: SettingsRepository
+    private val mirroredModes = mutableListOf<Int>()
 
     @Before
     fun setUp() {
@@ -37,7 +38,8 @@ class SettingsRepositoryTest {
         val dataStore = PreferenceDataStoreFactory.create(scope = testScope) {
             File(temporaryFolder.root, "settings.preferences_pb")
         }
-        repository = SettingsRepository(dataStore)
+        mirroredModes.clear()
+        repository = SettingsRepository(dataStore) { mode -> mirroredModes.add(mode) }
     }
 
     @Test
@@ -52,6 +54,15 @@ class SettingsRepositoryTest {
     fun `theme mode round trips`() = testScope.runTest {
         repository.setThemeMode(AppCompatDelegate.MODE_NIGHT_YES)
         assertEquals(AppCompatDelegate.MODE_NIGHT_YES, repository.themeMode.first())
+    }
+
+    @Test
+    fun `setting the theme also writes the startup mirror`() = testScope.runTest {
+        // The mirror is what makes the choice survive a cold start: startup needs the value
+        // synchronously, before DataStore can answer.
+        repository.setThemeMode(AppCompatDelegate.MODE_NIGHT_YES)
+
+        assertEquals(listOf(AppCompatDelegate.MODE_NIGHT_YES), mirroredModes)
     }
 
     @Test
