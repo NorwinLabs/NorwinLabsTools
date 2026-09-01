@@ -90,7 +90,7 @@ ksp {
 }
 
 android {
-    namespace = "com.example.norwinlabstools"
+    namespace = "com.norwinlabs.tools"
     // Compiling against 36 is required by current AndroidX (core-ktx 1.17, appcompat 1.7).
     // targetSdk stays at 35 deliberately: raising it changes runtime behaviour and belongs
     // with the UI work, not with a dependency bump.

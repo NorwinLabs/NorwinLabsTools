@@ -72,7 +72,7 @@
                     android:layout_marginBottom="8dp" />
 
                 <!-- Simple Custom View for Pie Chart visualization -->
-                <com.example.norwinlabstools.BudgetPieChartView
+                <com.norwinlabs.tools.BudgetPieChartView
                     android:id="@+id/pie_chart"
                     android:layout_width="200dp"
                     android:layout_height="200dp"

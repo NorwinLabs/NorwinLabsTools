@@ -1,0 +1,107 @@
+package com.norwinlabs.tools
+
+import android.content.Intent
+import android.graphics.Color
+import android.net.Uri
+import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SearchView
+import androidx.navigation.findNavController
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.navigateUp
+import androidx.navigation.ui.setupActionBarWithNavController
+import com.norwinlabs.tools.databinding.ActivityMainBinding
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var appBarConfiguration: AppBarConfiguration
+    private lateinit var binding: ActivityMainBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        setSupportActionBar(binding.toolbar)
+
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        appBarConfiguration = AppBarConfiguration(navController.graph)
+        setupActionBarWithNavController(navController, appBarConfiguration)
+
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id == R.id.HomeFragment) {
+                binding.fab.show()
+                binding.toolbar.setBackgroundColor(Color.TRANSPARENT)
+            } else {
+                binding.fab.hide()
+            }
+        }
+
+        handleVoipIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        findNavController(R.id.nav_host_fragment_content_main).handleDeepLink(intent)
+        handleVoipIntent(intent)
+    }
+
+    /** Opens the VoIP Calling screen when launched from the incoming-call notification. */
+    private fun handleVoipIntent(intent: Intent) {
+        if (!intent.getBooleanExtra(VoipCallService.EXTRA_OPEN_VOIP, false)) return
+        val autoAccept = intent.getBooleanExtra(VoipCallService.EXTRA_AUTO_ACCEPT, false)
+        val args = Bundle().apply { putBoolean("autoAccept", autoAccept) }
+        findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.VoipCallFragment, args)
+        // Consume the extras so rotating the screen or another onNewIntent doesn't re-navigate
+        // or re-trigger auto-accept.
+        intent.removeExtra(VoipCallService.EXTRA_OPEN_VOIP)
+        intent.removeExtra(VoipCallService.EXTRA_AUTO_ACCEPT)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        
+        val searchItem = menu.findItem(R.id.action_search)
+        val searchView = searchItem.actionView as SearchView
+        
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean = false
+            override fun onQueryTextChange(newText: String?): Boolean {
+                val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main)
+                val currentFragment = navHostFragment?.childFragmentManager?.fragments?.get(0)
+                if (currentFragment is HomeFragment) {
+                    currentFragment.filterTools(newText ?: "")
+                }
+                return true
+            }
+        })
+        
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> {
+                findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.action_HomeFragment_to_SettingsFragment)
+                true
+            }
+            R.id.action_windhelm -> {
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://windhelm.dev"))
+                startActivity(browserIntent)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        return navController.navigateUp(appBarConfiguration)
+                || super.onSupportNavigateUp()
+    }
+}

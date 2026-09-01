@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/HomeFragment"
-        android:name="com.example.norwinlabstools.HomeFragment"
+        android:name="com.norwinlabs.tools.HomeFragment"
         android:label=""
         tools:layout="@layout/fragment_home">
 
@@ -75,61 +75,61 @@
     
     <fragment
         android:id="@+id/SettingsFragment"
-        android:name="com.example.norwinlabstools.SettingsFragment"
+        android:name="com.norwinlabs.tools.SettingsFragment"
         android:label="@string/settings_fragment_label"
         tools:layout="@layout/fragment_settings" />
 
     <fragment
         android:id="@+id/HapticTesterFragment"
-        android:name="com.example.norwinlabstools.HapticTesterFragment"
+        android:name="com.norwinlabs.tools.HapticTesterFragment"
         android:label="Haptic Tester"
         tools:layout="@layout/fragment_haptic_tester" />
 
     <fragment
         android:id="@+id/CalendarFragment"
-        android:name="com.example.norwinlabstools.CalendarFragment"
+        android:name="com.norwinlabs.tools.CalendarFragment"
         android:label="Calendar"
         tools:layout="@layout/fragment_calendar" />
 
     <fragment
         android:id="@+id/NetScannerFragment"
-        android:name="com.example.norwinlabstools.NetScannerFragment"
+        android:name="com.norwinlabs.tools.NetScannerFragment"
         android:label="Net Scanner"
         tools:layout="@layout/fragment_net_scanner" />
 
     <fragment
         android:id="@+id/DevNewsFragment"
-        android:name="com.example.norwinlabstools.DevNewsFragment"
+        android:name="com.norwinlabs.tools.DevNewsFragment"
         android:label="Dev &amp; Accessibility News"
         tools:layout="@layout/fragment_dev_news" />
 
     <fragment
         android:id="@+id/BugReportFragment"
-        android:name="com.example.norwinlabstools.BugReportFragment"
+        android:name="com.norwinlabs.tools.BugReportFragment"
         android:label="Report a Bug"
         tools:layout="@layout/fragment_bug_report" />
 
     <fragment
         android:id="@+id/BudgetFragment"
-        android:name="com.example.norwinlabstools.BudgetFragment"
+        android:name="com.norwinlabs.tools.BudgetFragment"
         android:label="Budget"
         tools:layout="@layout/fragment_budget" />
 
     <fragment
         android:id="@+id/SystemDashboardFragment"
-        android:name="com.example.norwinlabstools.SystemDashboardFragment"
+        android:name="com.norwinlabs.tools.SystemDashboardFragment"
         android:label="System Dashboard"
         tools:layout="@layout/fragment_system_dashboard" />
 
     <fragment
         android:id="@+id/PortScannerFragment"
-        android:name="com.example.norwinlabstools.PortScannerFragment"
+        android:name="com.norwinlabs.tools.PortScannerFragment"
         android:label="Port Scanner"
         tools:layout="@layout/fragment_port_scanner" />
 
     <fragment
         android:id="@+id/CircleShareFragment"
-        android:name="com.example.norwinlabstools.CircleShareFragment"
+        android:name="com.norwinlabs.tools.CircleShareFragment"
         android:label="Circle Share"
         tools:layout="@layout/fragment_location_sharing">
         <argument
@@ -142,55 +142,55 @@
 
     <fragment
         android:id="@+id/DataCenterMapFragment"
-        android:name="com.example.norwinlabstools.DataCenterMapFragment"
+        android:name="com.norwinlabs.tools.DataCenterMapFragment"
         android:label="Data Centers"
         tools:layout="@layout/fragment_data_center_map" />
 
     <fragment
         android:id="@+id/FlockCameraMapFragment"
-        android:name="com.example.norwinlabstools.FlockCameraMapFragment"
+        android:name="com.norwinlabs.tools.FlockCameraMapFragment"
         android:label="Flock Cameras"
         tools:layout="@layout/fragment_flock_camera_map" />
 
     <fragment
         android:id="@+id/ConverterFragment"
-        android:name="com.example.norwinlabstools.ConverterFragment"
+        android:name="com.norwinlabs.tools.ConverterFragment"
         android:label="Converter"
         tools:layout="@layout/fragment_converter" />
 
     <fragment
         android:id="@+id/NotesFragment"
-        android:name="com.example.norwinlabstools.NotesFragment"
+        android:name="com.norwinlabs.tools.NotesFragment"
         android:label="Notes"
         tools:layout="@layout/fragment_notes" />
 
     <fragment
         android:id="@+id/AboutFragment"
-        android:name="com.example.norwinlabstools.AboutFragment"
+        android:name="com.norwinlabs.tools.AboutFragment"
         android:label="About"
         tools:layout="@layout/fragment_about" />
 
     <fragment
         android:id="@+id/UE5GuideFragment"
-        android:name="com.example.norwinlabstools.UE5GuideFragment"
+        android:name="com.norwinlabs.tools.UE5GuideFragment"
         android:label="UE5 Guide"
         tools:layout="@layout/fragment_ue5_guide" />
 
     <fragment
         android:id="@+id/SshClientFragment"
-        android:name="com.example.norwinlabstools.SshClientFragment"
+        android:name="com.norwinlabs.tools.SshClientFragment"
         android:label="SSH Client"
         tools:layout="@layout/fragment_ssh_client" />
 
     <fragment
         android:id="@+id/PingToolFragment"
-        android:name="com.example.norwinlabstools.PingToolFragment"
+        android:name="com.norwinlabs.tools.PingToolFragment"
         android:label="Ping Tool"
         tools:layout="@layout/fragment_ping_tool" />
 
     <fragment
         android:id="@+id/VoipCallFragment"
-        android:name="com.example.norwinlabstools.VoipCallFragment"
+        android:name="com.norwinlabs.tools.VoipCallFragment"
         android:label="VoIP Calling"
         tools:layout="@layout/fragment_voip_call">
         <argument
@@ -201,7 +201,7 @@
 
     <fragment
         android:id="@+id/HuntingInsightsMapFragment"
-        android:name="com.example.norwinlabstools.HuntingInsightsMapFragment"
+        android:name="com.norwinlabs.tools.HuntingInsightsMapFragment"
         android:label="Hunting Insights"
         tools:layout="@layout/fragment_hunting_insights_map" />
 
