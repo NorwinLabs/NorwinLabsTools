@@ -84,6 +84,11 @@ if (isBuildingRelease && releaseSigning == null) {
     )
 }
 
+// Room schemas are checked in so migrations can be written against a known previous version.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.example.norwinlabstools"
     // Compiling against 36 is required by current AndroidX (core-ktx 1.17, appcompat 1.7).
@@ -253,6 +258,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.org.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

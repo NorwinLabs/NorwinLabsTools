@@ -33,6 +33,7 @@ datastore = "1.1.7"
 lifecycle = "2.9.2"
 coroutines = "1.10.2"
 billing = "7.1.1"
+orgJson = "20240303"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -72,6 +73,8 @@ androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifec
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+# Real org.json for unit tests; the android.jar stub throws on every call.
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 
 # Monetization
 billing-ktx = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }

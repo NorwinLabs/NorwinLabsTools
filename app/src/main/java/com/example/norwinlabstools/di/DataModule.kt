@@ -5,7 +5,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.room.Room
 import com.example.norwinlabstools.data.SettingsRepository
+import com.example.norwinlabstools.data.db.NoteDao
+import com.example.norwinlabstools.data.db.NorwinDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -44,4 +47,12 @@ object DataModule {
     fun provideSettingsDataStore(
         @ApplicationContext context: Context,
     ): DataStore<Preferences> = context.settingsDataStore
+
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): NorwinDatabase =
+        Room.databaseBuilder(context, NorwinDatabase::class.java, NorwinDatabase.NAME).build()
+
+    @Provides
+    fun provideNoteDao(database: NorwinDatabase): NoteDao = database.noteDao()
 }
