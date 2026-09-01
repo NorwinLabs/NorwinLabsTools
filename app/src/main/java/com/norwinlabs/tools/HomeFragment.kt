@@ -147,6 +147,17 @@ class HomeFragment : Fragment() {
         binding.textviewNoToolsFound.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
     }
 
+    private fun updateToolbar() {
+        val activity = activity as? MainActivity ?: return
+        if (adapter.isEditMode) {
+            activity.supportActionBar?.title = "Edit Home"
+            backPressedCallback.isEnabled = true
+        } else {
+            activity.supportActionBar?.title = getString(R.string.app_name)
+            backPressedCallback.isEnabled = false
+        }
+    }
+
     /**
      * @param silent When true (the automatic check on Home load), only the status text updates -
      * no Toasts or dialogs, so opening the app doesn't interrupt with update prompts the user
