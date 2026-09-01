@@ -46,6 +46,13 @@ jobs:
       - name: Lint
         run: ./gradlew lintDebug
 
+      # Debug never runs R8. Minification and resource shrinking only happen in release, and
+      # every reflective dependency (WebRTC, JSch, the AI client) fails there rather than here.
+      # version.properties is bumped by this task inside the runner only; nothing is committed
+      # from this workflow, so the real release numbering on main is unaffected.
+      - name: Compile release (R8)
+        run: ./gradlew assembleRelease --stacktrace
+
       - name: Upload debug APK
         if: success()
         uses: actions/upload-artifact@v4
