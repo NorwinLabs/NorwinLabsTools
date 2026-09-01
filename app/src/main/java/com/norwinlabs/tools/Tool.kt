@@ -34,7 +34,6 @@ data class Tool(
     @DrawableRes val iconRes: Int,
     val version: String = "1.0.0",
     @ColorInt val color: Int = 0xFF6200EE.toInt(),
-    val imageUrl: String? = null,
     val category: String = "Other",
     val tier: ToolTier = ToolTier.FREE,
     /** Prompts for biometric auth before [action] runs, when the user has enabled it. */

@@ -12,8 +12,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
+        app:cardElevation="0dp"
+        app:cardPreventCornerOverlap="true"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Norwin.Medium"
         android:clickable="true"
         android:focusable="true"
         android:foreground="?attr/selectableItemBackground">
@@ -22,18 +23,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <ImageView
-                android:id="@+id/tool_image_background"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:alpha="0.6" />
-
+            <!-- Gradient drawn locally from the tool's colour; see ToolArtwork. This replaced a
+                 remote photo plus a translucent colour wash, which needed two stacked views. -->
             <View
-                android:id="@+id/tool_color_overlay"
+                android:id="@+id/tool_background_art"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:alpha="0.4" />
+                android:layout_height="match_parent" />
 
             <LinearLayout
                 android:id="@+id/tool_background"

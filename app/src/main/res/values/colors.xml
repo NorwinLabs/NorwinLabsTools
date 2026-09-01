@@ -1,5 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      Brand palette, light.
+
+      This is the scheme used below Android 12, and anywhere dynamic colour is unavailable.
+      Until now the app defined no colours at all, so it fell back to Material's baseline purple -
+      which is not a brand, it is the absence of one.
+
+      Teal reads as tooling rather than consumer-social, and holds up against the saturated,
+      per-tool card colours in ToolRegistry without competing with them.
+    -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="md_theme_light_primary">#006A6A</color>
+    <color name="md_theme_light_onPrimary">#FFFFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#FF6FF7F6</color>
+    <color name="md_theme_light_onPrimaryContainer">#FF002020</color>
+    <color name="md_theme_light_secondary">#FF4A6363</color>
+    <color name="md_theme_light_onSecondary">#FFFFFFFF</color>
+    <color name="md_theme_light_secondaryContainer">#FFCCE8E7</color>
+    <color name="md_theme_light_onSecondaryContainer">#FF051F1F</color>
+    <color name="md_theme_light_tertiary">#FF4B607C</color>
+    <color name="md_theme_light_onTertiary">#FFFFFFFF</color>
+    <color name="md_theme_light_tertiaryContainer">#FFD3E4FF</color>
+    <color name="md_theme_light_onTertiaryContainer">#FF041C35</color>
+    <color name="md_theme_light_error">#FFBA1A1A</color>
+    <color name="md_theme_light_onError">#FFFFFFFF</color>
+    <color name="md_theme_light_errorContainer">#FFFFDAD6</color>
+    <color name="md_theme_light_onErrorContainer">#FF410002</color>
+    <color name="md_theme_light_background">#FFFAFDFC</color>
+    <color name="md_theme_light_onBackground">#FF191C1C</color>
+    <color name="md_theme_light_surface">#FFFAFDFC</color>
+    <color name="md_theme_light_onSurface">#FF191C1C</color>
+    <color name="md_theme_light_surfaceVariant">#FFDAE5E4</color>
+    <color name="md_theme_light_onSurfaceVariant">#FF3F4948</color>
+    <color name="md_theme_light_outline">#FF6F7979</color>
+    <color name="md_theme_light_outlineVariant">#FFBEC9C8</color>
+    <color name="md_theme_light_inverseSurface">#FF2D3131</color>
+    <color name="md_theme_light_inverseOnSurface">#FFEFF1F1</color>
+    <color name="md_theme_light_inversePrimary">#FF4CDADA</color>
+    <color name="md_theme_light_surfaceTint">#FF006A6A</color>
+    <color name="md_theme_light_scrim">#FF000000</color>
+
+    <!-- Surface container roles, used for card and sheet elevation without drop shadows. -->
+    <color name="md_theme_light_surfaceContainerLowest">#FFFFFFFF</color>
+    <color name="md_theme_light_surfaceContainerLow">#FFF3F6F5</color>
+    <color name="md_theme_light_surfaceContainer">#FFEDF1F0</color>
+    <color name="md_theme_light_surfaceContainerHigh">#FFE7EBEA</color>
+    <color name="md_theme_light_surfaceContainerHighest">#FFE1E5E4</color>
 </resources>
