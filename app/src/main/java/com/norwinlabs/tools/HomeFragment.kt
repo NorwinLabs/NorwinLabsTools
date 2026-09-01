@@ -1,8 +1,6 @@
 package com.norwinlabs.tools
 
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import androidx.fragment.app.Fragment
@@ -34,9 +32,10 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var adapter: ToolsAdapter
-    private var aiManager: VideoIdeaManager? = null
 
     @Inject lateinit var settingsRepository: SettingsRepository
+
+    private lateinit var launcher: ToolLauncher
 
     private val currentTools = mutableListOf<Tool>()
 
@@ -67,6 +66,10 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Home keeps its own update handling so tapping the Update tool also refreshes the
+        // status widget on this screen; every other action is the shared behaviour.
+        launcher = ToolLauncher(this, settingsRepository, onCheckUpdates = { checkForUpdates() })
+
         adapter = ToolsAdapter(
             currentTools,
             onToolClick = { tool ->
@@ -75,7 +78,7 @@ class HomeFragment : Fragment() {
                     adapter.isEditMode = false
                     updateToolbar()
                 } else {
-                    openTool(tool)
+                    launcher.open(tool)
                 }
             },
             onToolLongClick = { toolView, _ ->
@@ -142,162 +145,6 @@ class HomeFragment : Fragment() {
     fun filterTools(query: String) {
         adapter.filter(query)
         binding.textviewNoToolsFound.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
-    }
-
-    /**
-     * The single dispatch point for a tool card tap. What a tool does is declared by its own
-     * [ToolAction] in [ToolRegistry], so adding a tool never means editing this function.
-     */
-    private fun openTool(tool: Tool) {
-        when (val action = tool.action) {
-            is ToolAction.Navigate ->
-                if (tool.requiresBiometric) checkBiometricAndNavigate(action.destinationId)
-                else findNavController().navigate(action.destinationId)
-
-            is ToolAction.OpenUrl ->
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(action.url)))
-
-            is ToolAction.Local -> when (action.id) {
-                LocalAction.IDEA_GENERATOR -> showIdeaGenerator()
-                LocalAction.VIDEO_IDEAS -> showVideoIdeaCategoryDialog()
-                LocalAction.CHECK_UPDATES -> checkForUpdates()
-            }
-
-            ToolAction.ComingSoon ->
-                AlertDialog.Builder(requireContext())
-                    .setTitle(tool.name)
-                    .setMessage("${tool.name} module is coming soon!")
-                    .setPositiveButton("OK", null)
-                    .show()
-        }
-    }
-
-    private fun checkBiometricAndNavigate(destinationId: Int) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val isBiometricEnabled = settingsRepository.biometricEnabled.first()
-            val biometricHelper = BiometricHelper(requireActivity())
-
-            if (!isBiometricEnabled || !biometricHelper.canAuthenticate()) {
-                findNavController().navigate(destinationId)
-                return@launch
-            }
-
-            biometricHelper.showBiometricPrompt(
-                "Restricted Tool",
-                "Authentication Required",
-                "Please authenticate to access this tool.",
-                object : BiometricHelper.BiometricCallback {
-                    override fun onAuthenticationSuccess() {
-                        findNavController().navigate(destinationId)
-                    }
-                    override fun onAuthenticationError(error: String) {
-                        Toast.makeText(requireContext(), "Auth Error: $error", Toast.LENGTH_SHORT).show()
-                    }
-                    override fun onAuthenticationFailed() {
-                        Toast.makeText(requireContext(), "Authentication failed", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
-        }
-    }
-
-    private fun showVideoIdeaCategoryDialog() {
-        val categories = arrayOf("Windhelm (Game)", "UE5 / Game Dev")
-        AlertDialog.Builder(requireContext())
-            .setTitle("Select Category")
-            .setItems(categories) { _, which ->
-                val category = if (which == 0) "Windhelm" else "General"
-                showVideoIdeaTypeDialog(category)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showVideoIdeaTypeDialog(category: String) {
-        val options = arrayOf("YouTube Short", "Long-Form Video")
-        AlertDialog.Builder(requireContext())
-            .setTitle("Select Format ($category)")
-            .setItems(options) { _, which ->
-                generateAIVideoIdea(isShort = (which == 0), category = category)
-            }
-            .setNegativeButton("Back") { _, _ -> showVideoIdeaCategoryDialog() }
-            .show()
-    }
-
-    private fun generateAIVideoIdea(isShort: Boolean, category: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val apiKey = settingsRepository.geminiApiKey.first()
-
-            if (apiKey.isEmpty()) {
-                AlertDialog.Builder(requireContext())
-                    .setTitle("API Key Required")
-                    .setMessage("Please set your Gemini API key in Settings to use AI features.")
-                    .setPositiveButton("Go to Settings") { _, _ ->
-                        findNavController().navigate(R.id.SettingsFragment)
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-                return@launch
-            }
-
-            if (aiManager == null) {
-                aiManager = VideoIdeaManager(apiKey)
-            }
-
-            val loadingDialog = AlertDialog.Builder(requireContext())
-                .setTitle("Consulting AI...")
-                .setMessage("Generating a custom idea for $category...")
-                .setCancelable(false)
-                .show()
-
-            aiManager?.generateIdea(isShort, category, object : VideoIdeaManager.VideoIdeaCallback {
-                override fun onSuccess(idea: String) {
-                    loadingDialog.dismiss()
-                    activity?.runOnUiThread {
-                        AlertDialog.Builder(requireContext())
-                            .setTitle(if (isShort) "AI Short Idea" else "AI Video Idea")
-                            .setMessage(idea)
-                            .setPositiveButton("Generate Another") { _, _ -> generateAIVideoIdea(isShort, category) }
-                            .setNeutralButton("Change Settings") { _, _ -> showVideoIdeaCategoryDialog() }
-                            .setNegativeButton("Close", null)
-                            .show()
-                    }
-                }
-
-                override fun onError(error: String) {
-                    loadingDialog.dismiss()
-                    activity?.runOnUiThread {
-                        Toast.makeText(requireContext(), "AI Error: $error", Toast.LENGTH_LONG).show()
-                    }
-                }
-            })
-        }
-    }
-
-    private fun showIdeaGenerator() {
-        val themes = listOf("Cyberpunk", "Medieval", "Underwater", "Space Western", "Post-Apocalyptic")
-        val mechanics = listOf("Permadeath", "Time Loop", "Deck Building", "Base Management", "Grappling Hook")
-        val goal = listOf("Escaping a prison", "Finding a cure", "Building an empire", "Revenge", "Exploration")
-
-        val idea = "Theme: ${themes.random()}\nMechanic: ${mechanics.random()}\nGoal: ${goal.random()}"
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("PC Game Mechanic Idea")
-            .setMessage(idea)
-            .setPositiveButton("New Idea") { _, _ -> showIdeaGenerator() }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
-    private fun updateToolbar() {
-        val activity = activity as? MainActivity ?: return
-        if (adapter.isEditMode) {
-            activity.supportActionBar?.title = "Edit Home"
-            backPressedCallback.isEnabled = true
-        } else {
-            activity.supportActionBar?.title = getString(R.string.app_name)
-            backPressedCallback.isEnabled = false
-        }
     }
 
     /**

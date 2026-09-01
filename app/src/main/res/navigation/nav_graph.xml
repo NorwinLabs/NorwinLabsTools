@@ -12,6 +12,12 @@
         tools:layout="@layout/fragment_home" />
     
     <fragment
+        android:id="@+id/ToolsFragment"
+        android:name="com.norwinlabs.tools.ToolsFragment"
+        android:label="@string/nav_tools"
+        tools:layout="@layout/fragment_tools" />
+
+    <fragment
         android:id="@+id/SettingsFragment"
         android:name="com.norwinlabs.tools.SettingsFragment"
         android:label="@string/settings_fragment_label"

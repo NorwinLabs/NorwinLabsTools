@@ -2,4 +2,9 @@
     <string name="app_name">NorwinLabsTools</string>
     <string name="action_settings">Settings</string>
     <string name="settings_fragment_label">Settings</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_tools">Tools</string>
+    <string name="nav_settings">Settings</string>
+    <string name="tools_no_match">No tools match your search</string>
+    <string name="fab_add_tool">Add a tool to Home</string>
 </resources>

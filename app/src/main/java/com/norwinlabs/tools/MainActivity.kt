@@ -13,12 +13,15 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.navigation.ui.setupWithNavController
+import com.google.android.material.navigation.NavigationBarView
 import com.norwinlabs.tools.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
+    private var navigationBar: NavigationBarView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,16 +32,30 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
+
+        // The three tabs are all roots, so none of them shows an Up arrow. Passing the graph
+        // wholesale would have made only the start destination top-level, giving Tools and
+        // Settings a back arrow that competes with the tab bar.
+        appBarConfiguration = AppBarConfiguration(TOP_LEVEL_DESTINATIONS)
         setupActionBarWithNavController(navController, appBarConfiguration)
 
+        // Phones inflate a bottom bar, w600dp+ a navigation rail. Both are NavigationBarViews
+        // with the same menu and ids, so only one of these is non-null in any configuration.
+        navigationBar = binding.bottomNav ?: binding.navRail
+        navigationBar?.setupWithNavController(navController)
+
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            if (destination.id == R.id.HomeFragment) {
+            val isHome = destination.id == R.id.HomeFragment
+            if (isHome) {
                 binding.fab.show()
                 binding.toolbar.setBackgroundColor(Color.TRANSPARENT)
             } else {
                 binding.fab.hide()
             }
+            // The bar belongs to the top-level destinations; on a detail screen it would offer
+            // to switch tabs out from under whatever the user is doing.
+            navigationBar?.visibility =
+                if (destination.id in TOP_LEVEL_DESTINATIONS) View.VISIBLE else View.GONE
         }
 
         handleVoipIntent(intent)
@@ -73,9 +90,11 @@ class MainActivity : AppCompatActivity() {
             override fun onQueryTextSubmit(query: String?): Boolean = false
             override fun onQueryTextChange(newText: String?): Boolean {
                 val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main)
-                val currentFragment = navHostFragment?.childFragmentManager?.fragments?.get(0)
-                if (currentFragment is HomeFragment) {
-                    currentFragment.filterTools(newText ?: "")
+                val query = newText.orEmpty()
+                when (val current = navHostFragment?.childFragmentManager?.fragments?.firstOrNull()) {
+                    is HomeFragment -> current.filterTools(query)
+                    is ToolsFragment -> current.filterTools(query)
+                    else -> Unit
                 }
                 return true
             }
@@ -103,5 +122,13 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
+    }
+
+    private companion object {
+        val TOP_LEVEL_DESTINATIONS = setOf(
+            R.id.HomeFragment,
+            R.id.ToolsFragment,
+            R.id.SettingsFragment,
+        )
     }
 }

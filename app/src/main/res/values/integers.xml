@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tool grid density. Overridden for wider screens so tablets don't show a phone-width
+         grid stretched across the display. -->
+    <integer name="tools_span_count">3</integer>
+    <integer name="home_span_count">2</integer>
+</resources>
