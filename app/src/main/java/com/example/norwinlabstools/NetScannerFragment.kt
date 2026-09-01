@@ -183,7 +183,11 @@ class NetScannerFragment : Fragment() {
                         if (_binding != null) {
                             deviceList.add(0, device)
                             deviceAdapter.notifyItemInserted(0)
-                            analyzeDeviceSecurity(device, listOf("WiFi Security: $security"))
+                            // Reading the AI settings suspends, and this runs on a broadcast
+                            // callback rather than in a coroutine.
+                            lifecycleScope.launch {
+                                analyzeDeviceSecurity(device, listOf("WiFi Security: $security"))
+                            }
                         }
                     }
                 }
