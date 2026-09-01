@@ -37,39 +37,6 @@ class HomeFragment : Fragment() {
     private val KEY_BIOMETRIC = "enable_biometric"
     private val KEY_API_KEY = "gemini_api_key"
 
-    private val allTools = listOf(
-        Tool(1, "Calendar", android.R.drawable.ic_menu_today, "1.0.2", 0xFF2E7D32.toInt(), "https://images.unsplash.com/photo-1506784365847-bbad939e9335?q=80&w=500&auto=format&fit=crop", category = "Personal"),
-        Tool(2, "Converter", android.R.drawable.ic_menu_compass, "1.0.0", 0xFF1565C0.toInt(), "https://images.unsplash.com/photo-1574634534894-89d7576c8259?q=80&w=500&auto=format&fit=crop", category = "Personal"),
-        Tool(3, "Notes", android.R.drawable.ic_menu_edit, "1.0.0", 0xFFEF6C00.toInt(), "https://images.unsplash.com/photo-1517842645767-c639042777db?q=80&w=500&auto=format&fit=crop", category = "Personal"),
-        Tool(4, "Settings", android.R.drawable.ic_menu_manage, "1.0.1", 0xFF455A64.toInt(), "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop", category = "System"),
-        // No background photo: dedupes what used to be an identical image to Bug Report's card.
-        Tool(5, "About", android.R.drawable.ic_menu_info_details, "1.0.0", 0xFF4527A0.toInt(), category = "System"),
-        Tool(9, "Idea Generator", R.drawable.ic_lightbulb, "1.0.1", 0xFFF9A825.toInt(), "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=500&auto=format&fit=crop", category = "Dev Tools"),
-        Tool(12, "Update", android.R.drawable.ic_menu_upload, "1.0.1", 0xFFC62828.toInt(), "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=500&auto=format&fit=crop", category = "System"),
-        Tool(13, "Windhelm", android.R.drawable.ic_menu_view, "1.0.2", 0xFF283593.toInt(), "https://windhelm.dev/background.png", category = "Windhelm"),
-        Tool(15, "UE5 Guide", android.R.drawable.ic_menu_directions, "1.0.0", 0xFF00695C.toInt(), "https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=500&auto=format&fit=crop", category = "Windhelm"),
-        Tool(16, "Trello", android.R.drawable.ic_menu_agenda, "1.0.1", 0xFF0079BF.toInt(), "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=500&auto=format&fit=crop", category = "Windhelm"),
-        Tool(17, "SSH Client", android.R.drawable.ic_dialog_dialer, "1.0.0", 0xFF37474F.toInt(), "https://images.unsplash.com/photo-1629654297299-c8506221ca97?q=80&w=500&auto=format&fit=crop", category = "Network Tools"),
-        // No background photo: dedupes what used to be an identical image to Port Scanner's card.
-        Tool(18, "Ping Tool", android.R.drawable.ic_menu_revert, "1.0.0", 0xFF0091EA.toInt(), category = "Network Tools"),
-        Tool(20, "Net Scanner", android.R.drawable.ic_menu_share, "1.0.2", 0xFF546E7A.toInt(), "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=500&auto=format&fit=crop", category = "Network Tools"),
-        Tool(21, "Video Ideas", android.R.drawable.ic_menu_slideshow, "1.0.3", 0xFFE91E63.toInt(), "https://images.unsplash.com/photo-1492724441997-5dc865305da7?q=80&w=500&auto=format&fit=crop", category = "Dev Tools"),
-        Tool(22, "Dev News", android.R.drawable.ic_menu_recent_history, "1.0.1", 0xFF2E7D32.toInt(), "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=500&auto=format&fit=crop", category = "Dev Tools"),
-        Tool(23, "Bug Report", android.R.drawable.ic_menu_report_image, "1.0.0", 0xFFC62828.toInt(), "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=500&auto=format&fit=crop", category = "System"),
-        Tool(24, "Budget", android.R.drawable.ic_menu_save, "1.0.0", 0xFF4CAF50.toInt(), "https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=500&auto=format&fit=crop", category = "Personal"),
-        Tool(25, "System Dash", android.R.drawable.ic_menu_info_details, "1.0.0", 0xFF607D8B.toInt(), "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=500&auto=format&fit=crop", category = "System"),
-        Tool(26, "Port Scanner", android.R.drawable.ic_menu_compass, "1.0.0", 0xFF3F51B5.toInt(), "https://images.unsplash.com/photo-1558494949-ef010ca73324?q=80&w=500&auto=format&fit=crop", category = "Network Tools"),
-        Tool(27, "Circle Share", android.R.drawable.ic_menu_share, "1.0.0", 0xFF2196F3.toInt(), "https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=500&auto=format&fit=crop", category = "Maps & Location"),
-        // No background photo: dedupes what used to be an identical image shared by three cards.
-        Tool(28, "Data Centers", android.R.drawable.ic_menu_mapmode, "1.0.0", 0xFF00838F.toInt(), category = "Maps & Location"),
-        Tool(29, "Flock Cameras", android.R.drawable.ic_menu_camera, "1.0.0", 0xFF6A1B9A.toInt(), category = "Maps & Location"),
-        Tool(30, "VoIP Calling", android.R.drawable.ic_menu_call, "1.0.0", 0xFF00897B.toInt(), category = "Communication"),
-        Tool(31, "Hunting Insights", android.R.drawable.ic_menu_mylocation, "1.0.0", 0xFF33691E.toInt(), category = "Maps & Location")
-    )
-
-    // Controls section order in the "Add Tool" sheet; anything with an unlisted category sorts last.
-    private val categoryOrder = listOf("Communication", "Maps & Location", "Network Tools", "Dev Tools", "Windhelm", "Personal", "System")
-
     private var currentTools = mutableListOf<Tool>()
 
     private val backPressedCallback = object : OnBackPressedCallback(false) {
@@ -108,45 +75,7 @@ class HomeFragment : Fragment() {
                     adapter.isEditMode = false
                     updateToolbar()
                 } else {
-                    when(tool.id) {
-                        4 -> findNavController().navigate(R.id.action_HomeFragment_to_SettingsFragment)
-                        1 -> findNavController().navigate(R.id.action_HomeFragment_to_CalendarFragment)
-                        2 -> findNavController().navigate(R.id.action_HomeFragment_to_ConverterFragment)
-                        3 -> findNavController().navigate(R.id.action_HomeFragment_to_NotesFragment)
-                        5 -> findNavController().navigate(R.id.action_HomeFragment_to_AboutFragment)
-                        9 -> showIdeaGenerator()
-                        12 -> checkForUpdates()
-                        13 -> {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://windhelm.dev"))
-                            startActivity(intent)
-                        }
-                        15 -> findNavController().navigate(R.id.action_HomeFragment_to_UE5GuideFragment)
-                        16 -> {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://trello.com/b/SVY6LFSZ/windhelm-main-development"))
-                            startActivity(intent)
-                        }
-                        17 -> findNavController().navigate(R.id.action_HomeFragment_to_SshClientFragment)
-                        18 -> findNavController().navigate(R.id.action_HomeFragment_to_PingToolFragment)
-                        20 -> checkBiometricAndNavigate(R.id.action_HomeFragment_to_NetScannerFragment)
-                        21 -> showVideoIdeaCategoryDialog()
-                        22 -> findNavController().navigate(R.id.action_HomeFragment_to_DevNewsFragment)
-                        23 -> findNavController().navigate(R.id.action_HomeFragment_to_BugReportFragment)
-                        24 -> findNavController().navigate(R.id.action_HomeFragment_to_BudgetFragment)
-                        25 -> findNavController().navigate(R.id.action_HomeFragment_to_SystemDashboardFragment)
-                        26 -> findNavController().navigate(R.id.action_HomeFragment_to_PortScannerFragment)
-                        27 -> findNavController().navigate(R.id.action_HomeFragment_to_CircleShareFragment)
-                        28 -> findNavController().navigate(R.id.action_HomeFragment_to_DataCenterMapFragment)
-                        29 -> findNavController().navigate(R.id.action_HomeFragment_to_FlockCameraMapFragment)
-                        30 -> findNavController().navigate(R.id.action_HomeFragment_to_VoipCallFragment)
-                        31 -> findNavController().navigate(R.id.action_HomeFragment_to_HuntingInsightsMapFragment)
-                        else -> {
-                             AlertDialog.Builder(requireContext())
-                                .setTitle(tool.name)
-                                .setMessage("${tool.name} module is coming soon!")
-                                .setPositiveButton("OK", null)
-                                .show()
-                        }
-                    }
+                    openTool(tool)
                 }
             },
             onToolLongClick = { toolView, _ ->
@@ -211,6 +140,34 @@ class HomeFragment : Fragment() {
     fun filterTools(query: String) {
         adapter.filter(query)
         binding.textviewNoToolsFound.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * The single dispatch point for a tool card tap. What a tool does is declared by its own
+     * [ToolAction] in [ToolRegistry], so adding a tool never means editing this function.
+     */
+    private fun openTool(tool: Tool) {
+        when (val action = tool.action) {
+            is ToolAction.Navigate ->
+                if (tool.requiresBiometric) checkBiometricAndNavigate(action.actionId)
+                else findNavController().navigate(action.actionId)
+
+            is ToolAction.OpenUrl ->
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(action.url)))
+
+            is ToolAction.Local -> when (action.id) {
+                LocalAction.IDEA_GENERATOR -> showIdeaGenerator()
+                LocalAction.VIDEO_IDEAS -> showVideoIdeaCategoryDialog()
+                LocalAction.CHECK_UPDATES -> checkForUpdates()
+            }
+
+            ToolAction.ComingSoon ->
+                AlertDialog.Builder(requireContext())
+                    .setTitle(tool.name)
+                    .setMessage("${tool.name} module is coming soon!")
+                    .setPositiveButton("OK", null)
+                    .show()
+        }
     }
 
     private fun checkBiometricAndNavigate(destinationId: Int) {
@@ -425,14 +382,14 @@ class HomeFragment : Fragment() {
 
     private fun showAddToolsBottomSheet() {
         val currentToolIds = adapter.getItems().map { it.id }.toSet()
-        val availableToAdd = allTools.filter { it.id !in currentToolIds }.toMutableList()
+        val availableToAdd = ToolRegistry.all.filter { it.id !in currentToolIds }.toMutableList()
         if (availableToAdd.isEmpty()) {
             AlertDialog.Builder(requireContext()).setTitle("No Tools Available").setMessage("All tools are already on your home screen.").setPositiveButton("OK", null).show()
             return
         }
         val dialog = BottomSheetDialog(requireContext())
         val bottomSheetBinding = LayoutAddToolsBinding.inflate(layoutInflater)
-        val sheetAdapter = CategorizedToolsAdapter(availableToAdd, categoryOrder) { tool ->
+        val sheetAdapter = CategorizedToolsAdapter(availableToAdd, ToolRegistry.categoryOrder) { tool ->
             adapter.addTool(tool)
             saveHomeTools()
             dialog.dismiss()
@@ -456,10 +413,12 @@ class HomeFragment : Fragment() {
         val savedIds = prefs.getString(KEY_HOME_TOOLS, null)
         currentTools.clear()
         if (savedIds != null) {
-            val idList = savedIds.split(",").filter { it.isNotEmpty() }.map { it.toInt() }
-            idList.forEach { id -> allTools.find { it.id == id }?.let { currentTools.add(it) } }
+            // toIntOrNull rather than toInt: a malformed prefs entry should drop that one tool,
+            // not crash Home on launch.
+            val idList = savedIds.split(",").mapNotNull { it.toIntOrNull() }
+            currentTools.addAll(ToolRegistry.byIds(idList))
         } else {
-            currentTools.addAll(allTools.take(4))
+            currentTools.addAll(ToolRegistry.all.take(4))
         }
     }
 
