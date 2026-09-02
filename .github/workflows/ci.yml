@@ -1,0 +1,74 @@
+name: CI
+
+# Verification-only workflow for in-progress work. Deliberately never runs
+# assembleRelease: that task auto-increments version.properties (see
+# app/build.gradle.kts), which must only happen on main via release.yml.
+on:
+  push:
+    branches:
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# A newer push to the same branch makes the in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # JDK 17 matches release.yml. The Gradle daemon itself runs on a
+      # JetBrains JVM 21 that Gradle auto-provisions from the toolchainUrl
+      # entries in gradle/gradle-daemon-jvm.properties.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Compile debug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Lint
+        run: ./gradlew lintDebug
+
+      # Debug never runs R8. Minification and resource shrinking only happen in release, and
+      # every reflective dependency (WebRTC, JSch, the AI client) fails there rather than here.
+      # version.properties is bumped by this task inside the runner only; nothing is committed
+      # from this workflow, so the real release numbering on main is unaffected.
+      - name: Compile release (R8)
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk-${{ github.sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.sha }}
+          path: |
+            app/build/reports/**
+            app/build/outputs/logs/**
+          if-no-files-found: ignore
+          retention-days: 7

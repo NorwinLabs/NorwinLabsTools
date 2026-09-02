@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Top-level destinations. These are also the AppBarConfiguration set in MainActivity, so none of
+  them shows an Up arrow - each is a root, not a child of Home.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/HomeFragment"
+        android:icon="@drawable/ic_nav_home"
+        android:title="@string/nav_home" />
+    <item
+        android:id="@+id/ToolsFragment"
+        android:icon="@drawable/ic_nav_tools"
+        android:title="@string/nav_tools" />
+    <item
+        android:id="@+id/SettingsFragment"
+        android:icon="@drawable/ic_nav_settings"
+        android:title="@string/nav_settings" />
+</menu>

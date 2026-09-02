@@ -1,5 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      Brand palette.
+
+      Both schemes are declared here rather than splitting the dark one into values-night: a
+      resource that exists only under a qualifier can still be queried in a configuration that
+      does not match it, which is lint's MissingDefaultResource and a real crash risk.
+      values-night/themes.xml simply selects the dark roles.
+
+      Until now the app defined no colours at all, so it fell back to Material's baseline purple -
+      which is not a brand, it is the absence of one. Teal reads as tooling rather than
+      consumer-social, and holds up against the saturated per-tool card colours in ToolRegistry
+      without competing with them.
+    -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Light -->
+    <color name="md_theme_light_primary">#FF006A6A</color>
+    <color name="md_theme_light_onPrimary">#FFFFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#FF6FF7F6</color>
+    <color name="md_theme_light_onPrimaryContainer">#FF002020</color>
+    <color name="md_theme_light_secondary">#FF4A6363</color>
+    <color name="md_theme_light_onSecondary">#FFFFFFFF</color>
+    <color name="md_theme_light_secondaryContainer">#FFCCE8E7</color>
+    <color name="md_theme_light_onSecondaryContainer">#FF051F1F</color>
+    <color name="md_theme_light_tertiary">#FF4B607C</color>
+    <color name="md_theme_light_onTertiary">#FFFFFFFF</color>
+    <color name="md_theme_light_tertiaryContainer">#FFD3E4FF</color>
+    <color name="md_theme_light_onTertiaryContainer">#FF041C35</color>
+    <color name="md_theme_light_error">#FFBA1A1A</color>
+    <color name="md_theme_light_onError">#FFFFFFFF</color>
+    <color name="md_theme_light_errorContainer">#FFFFDAD6</color>
+    <color name="md_theme_light_onErrorContainer">#FF410002</color>
+    <color name="md_theme_light_background">#FFFAFDFC</color>
+    <color name="md_theme_light_onBackground">#FF191C1C</color>
+    <color name="md_theme_light_surface">#FFFAFDFC</color>
+    <color name="md_theme_light_onSurface">#FF191C1C</color>
+    <color name="md_theme_light_surfaceVariant">#FFDAE5E4</color>
+    <color name="md_theme_light_onSurfaceVariant">#FF3F4948</color>
+    <color name="md_theme_light_outline">#FF6F7979</color>
+    <color name="md_theme_light_outlineVariant">#FFBEC9C8</color>
+    <color name="md_theme_light_inverseSurface">#FF2D3131</color>
+    <color name="md_theme_light_inverseOnSurface">#FFEFF1F1</color>
+    <color name="md_theme_light_inversePrimary">#FF4CDADA</color>
+    <color name="md_theme_light_surfaceTint">#FF006A6A</color>
+    <color name="md_theme_light_scrim">#FF000000</color>
+    <color name="md_theme_light_surfaceContainerLowest">#FFFFFFFF</color>
+    <color name="md_theme_light_surfaceContainerLow">#FFF3F6F5</color>
+    <color name="md_theme_light_surfaceContainer">#FFEDF1F0</color>
+    <color name="md_theme_light_surfaceContainerHigh">#FFE7EBEA</color>
+    <color name="md_theme_light_surfaceContainerHighest">#FFE1E5E4</color>
+
+    <!--
+      Dark. Not the light scheme inverted: primary lightens so it stays legible on dark surfaces,
+      containers darken so text on them keeps contrast, and surfaces are near-neutral with a
+      slight teal cast rather than pure black - which stops the saturated tool-card colours
+      vibrating against the background on OLED screens.
+    -->
+    <color name="md_theme_dark_primary">#FF4CDADA</color>
+    <color name="md_theme_dark_onPrimary">#FF003737</color>
+    <color name="md_theme_dark_primaryContainer">#FF004F50</color>
+    <color name="md_theme_dark_onPrimaryContainer">#FF6FF7F6</color>
+    <color name="md_theme_dark_secondary">#FFB0CCCB</color>
+    <color name="md_theme_dark_onSecondary">#FF1B3534</color>
+    <color name="md_theme_dark_secondaryContainer">#FF324B4B</color>
+    <color name="md_theme_dark_onSecondaryContainer">#FFCCE8E7</color>
+    <color name="md_theme_dark_tertiary">#FFB3C8E8</color>
+    <color name="md_theme_dark_onTertiary">#FF1C314B</color>
+    <color name="md_theme_dark_tertiaryContainer">#FF334863</color>
+    <color name="md_theme_dark_onTertiaryContainer">#FFD3E4FF</color>
+    <color name="md_theme_dark_error">#FFFFB4AB</color>
+    <color name="md_theme_dark_onError">#FF690005</color>
+    <color name="md_theme_dark_errorContainer">#FF93000A</color>
+    <color name="md_theme_dark_onErrorContainer">#FFFFDAD6</color>
+    <color name="md_theme_dark_background">#FF191C1C</color>
+    <color name="md_theme_dark_onBackground">#FFE0E3E2</color>
+    <color name="md_theme_dark_surface">#FF191C1C</color>
+    <color name="md_theme_dark_onSurface">#FFE0E3E2</color>
+    <color name="md_theme_dark_surfaceVariant">#FF3F4948</color>
+    <color name="md_theme_dark_onSurfaceVariant">#FFBEC9C8</color>
+    <color name="md_theme_dark_outline">#FF899393</color>
+    <color name="md_theme_dark_outlineVariant">#FF3F4948</color>
+    <color name="md_theme_dark_inverseSurface">#FFE0E3E2</color>
+    <color name="md_theme_dark_inverseOnSurface">#FF191C1C</color>
+    <color name="md_theme_dark_inversePrimary">#FF006A6A</color>
+    <color name="md_theme_dark_surfaceTint">#FF4CDADA</color>
+    <color name="md_theme_dark_scrim">#FF000000</color>
+    <color name="md_theme_dark_surfaceContainerLowest">#FF0C0F0F</color>
+    <color name="md_theme_dark_surfaceContainerLow">#FF191C1C</color>
+    <color name="md_theme_dark_surfaceContainer">#FF1D2020</color>
+    <color name="md_theme_dark_surfaceContainerHigh">#FF272B2A</color>
+    <color name="md_theme_dark_surfaceContainerHighest">#FF323535</color>
 </resources>

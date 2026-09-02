@@ -1,0 +1,759 @@
+package com.norwinlabs.tools
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.*
+import android.graphics.drawable.BitmapDrawable
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.net.Uri
+import android.os.Bundle
+import android.preference.PreferenceManager
+import android.provider.MediaStore
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Base64
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.norwinlabs.tools.data.FirebaseAuthGate
+import kotlinx.coroutines.launch
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.norwinlabs.tools.databinding.FragmentLocationSharingBinding
+import com.norwinlabs.tools.databinding.ItemCircleMemberBinding
+import com.norwinlabs.tools.databinding.LayoutCircleMembersBinding
+import com.google.android.gms.nearby.Nearby
+import com.google.android.gms.nearby.connection.*
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.firebase.database.*
+import com.yalantis.ucrop.UCrop
+import org.osmdroid.config.Configuration
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.TilesOverlay
+import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.*
+
+class CircleShareFragment : Fragment() {
+
+    private var _binding: FragmentLocationSharingBinding? = null
+    private val binding get() = _binding!!
+
+    private lateinit var locationManager: LocationManager
+    private val markers = mutableMapOf<String, Marker>()
+    
+    private var database: DatabaseReference? = null
+    private var currentCircleId: String? = null
+    private var userId: String = ""
+    private var isAdmin: Boolean = false
+    private var myName: String = "User"
+    private var myPhotoBase64: String? = null
+    private var isMapCentered = false
+    private var hasSeenSelfInCircle = false
+    private lateinit var mapTheme: MapThemeController
+
+    // P2P (Nearby Connections)
+    private lateinit var connectionsClient: ConnectionsClient
+    private val STRATEGY = Strategy.P2P_CLUSTER
+    private val SERVICE_ID = "com.norwinlabs.tools.CIRCLE_SHARE"
+    private val activeConnections = mutableSetOf<String>()
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1001
+    }
+
+    private val PREFS_NAME = "circle_prefs"
+    private val KEY_CIRCLE_ID = "current_circle_id"
+    private val KEY_USER_ID = "user_id"
+    private val KEY_MY_NAME = "user_name"
+    private val KEY_MY_PHOTO = "user_photo"
+
+    private val photoPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val sourceUri: Uri? = result.data?.data
+            sourceUri?.let { uri ->
+                startCrop(uri)
+            }
+        }
+    }
+
+    private val cropLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val resultUri = UCrop.getOutput(result.data!!)
+            resultUri?.let { uri ->
+                val bitmap = BitmapFactory.decodeStream(requireContext().contentResolver.openInputStream(uri))
+                updateMyPhoto(bitmap)
+            }
+        } else if (result.resultCode == UCrop.RESULT_ERROR) {
+            val cropError = UCrop.getError(result.data!!)
+            Toast.makeText(context, "Crop error: ${cropError?.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val locationListener = object : LocationListener {
+        override fun onLocationChanged(location: Location) {
+            val myPoint = GeoPoint(location.latitude, location.longitude)
+            updateMarker("me", myPoint, isMe = true, name = myName, photoBase64 = myPhotoBase64)
+
+            if (!isMapCentered) {
+                binding.mapView.controller.setCenter(myPoint)
+                isMapCentered = true
+            }
+
+            currentCircleId?.let { circleId ->
+                database?.child("circles")?.child(circleId)?.child("members")?.child(userId)?.apply {
+                    child("lat").setValue(location.latitude)
+                    child("lng").setValue(location.longitude)
+                    child("name").setValue(myName)
+                    child("photo").setValue(myPhotoBase64)
+                    child("lastUpdated").setValue(System.currentTimeMillis())
+                }
+            }
+            
+            // Send P2P update if connected
+            broadcastLocationP2P(location)
+        }
+        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        Configuration.getInstance().load(requireContext(), PreferenceManager.getDefaultSharedPreferences(requireContext()))
+        Configuration.getInstance().userAgentValue = "NorwinLabsTools-CircleShare/${requireContext().packageName}"
+
+        _binding = FragmentLocationSharingBinding.inflate(inflater, container, false)
+        connectionsClient = Nearby.getConnectionsClient(requireActivity())
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        
+        // The database rules require an authenticated identity. Sign-in is normally already
+        // cached from app start; this only matters on a genuine first launch.
+        viewLifecycleOwner.lifecycleScope.launch { FirebaseAuthGate.awaitUid() }
+
+        setupMap()
+        loadUserData()
+
+        locationManager = requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+        binding.ivMyProfilePhoto.setOnClickListener {
+            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+            photoPickerLauncher.launch(intent)
+        }
+
+        binding.editMyName.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                myName = s.toString()
+                requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString(KEY_MY_NAME, myName).apply()
+                syncProfileToFirebase()
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        binding.btnCreateCircle.setOnClickListener {
+            val newCode = (100000..999999).random().toString()
+            createCircle(newCode)
+        }
+
+        binding.btnJoinCircle.setOnClickListener {
+            val code = binding.editCircleCode.text.toString()
+            if (code.length == 6) {
+                joinCircle(code)
+            } else {
+                Toast.makeText(context, "Enter a 6-digit code", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        binding.btnViewMembers.setOnClickListener {
+            showMembersSheet()
+        }
+
+        binding.btnShareCode.setOnClickListener {
+            shareCircleCode()
+        }
+
+        binding.fabCenterOnMe.setOnClickListener {
+            centerOnLastKnownLocation()
+        }
+
+        binding.fabToggleSatellite.setOnClickListener {
+            mapTheme.toggleSatellite()
+        }
+
+        binding.fabToggleDarkMode.setOnClickListener {
+            val isDark = mapTheme.toggleDarkMode()
+            binding.fabToggleDarkMode.setImageResource(
+                if (isDark) android.R.drawable.ic_menu_day else android.R.drawable.ic_menu_recent_history
+            )
+        }
+
+        checkLocationPermissions()
+        startLocationUpdates()
+        centerOnLastKnownLocation()
+
+        val deepLinkCode = arguments?.getString("code")
+        if (!deepLinkCode.isNullOrBlank() && deepLinkCode.length == 6) {
+            joinCircle(deepLinkCode)
+        } else {
+            currentCircleId?.let { joinCircle(it, isAutoJoin = true) }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun centerOnLastKnownLocation() {
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            val providers = locationManager.getProviders(true)
+            var bestLocation: Location? = null
+            for (provider in providers) {
+                val l = locationManager.getLastKnownLocation(provider) ?: continue
+                if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
+                    bestLocation = l
+                }
+            }
+            if (bestLocation != null) {
+                val point = GeoPoint(bestLocation.latitude, bestLocation.longitude)
+                binding.mapView.controller.animateTo(point)
+                isMapCentered = true
+            } else if (!isMapCentered) {
+                Toast.makeText(context, "Finding location...", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun startCrop(uri: Uri) {
+        val destinationUri = Uri.fromFile(File(requireContext().cacheDir, "profile_crop.jpg"))
+        val uCrop = UCrop.of(uri, destinationUri)
+            .withAspectRatio(1f, 1f)
+            .withMaxResultSize(200, 200)
+        
+        cropLauncher.launch(uCrop.getIntent(requireContext()))
+    }
+
+    private fun loadUserData() {
+        val prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        userId = prefs.getString(KEY_USER_ID, null) ?: UUID.randomUUID().toString().take(6).also {
+            prefs.edit().putString(KEY_USER_ID, it).apply()
+        }
+        currentCircleId = prefs.getString(KEY_CIRCLE_ID, null)
+        myName = prefs.getString(KEY_MY_NAME, "User $userId") ?: "User $userId"
+        myPhotoBase64 = prefs.getString(KEY_MY_PHOTO, null)
+
+        binding.editMyName.setText(myName)
+        myPhotoBase64?.let {
+            val decodedString = Base64.decode(it, Base64.DEFAULT)
+            val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+            binding.ivMyProfilePhoto.setImageBitmap(getCircularBitmap(decodedByte))
+        }
+    }
+
+    private fun updateMyPhoto(bitmap: Bitmap) {
+        val circular = getCircularBitmap(bitmap)
+        val outputStream = ByteArrayOutputStream()
+        circular.compress(Bitmap.CompressFormat.PNG, 90, outputStream)
+        val byteArray = outputStream.toByteArray()
+        myPhotoBase64 = Base64.encodeToString(byteArray, Base64.DEFAULT)
+        
+        binding.ivMyProfilePhoto.setImageBitmap(circular)
+        requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString(KEY_MY_PHOTO, myPhotoBase64).apply()
+        syncProfileToFirebase()
+    }
+
+    private fun getCircularBitmap(bitmap: Bitmap): Bitmap {
+        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint = Paint()
+        val rect = Rect(0, 0, bitmap.width, bitmap.height)
+        
+        paint.isAntiAlias = true
+        canvas.drawARGB(0, 0, 0, 0)
+        canvas.drawCircle(bitmap.width / 2f, bitmap.height / 2f, bitmap.width / 2f, paint)
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        canvas.drawBitmap(bitmap, rect, rect, paint)
+        return output
+    }
+
+    private fun createMarkerIcon(photo: Bitmap?, isMe: Boolean): Bitmap {
+        val size = 100
+        val pointerHeight = 20
+        val border = 6
+        
+        val output = Bitmap.createBitmap(size, size + pointerHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val path = Path()
+        
+        val markerColor = if (isMe) 0xFF2196F3.toInt() else 0xFF4CAF50.toInt()
+        
+        paint.color = markerColor
+        path.moveTo(size / 2f - 15, size - 5f)
+        path.lineTo(size / 2f, size + pointerHeight.toFloat())
+        path.lineTo(size / 2f + 15, size - 5f)
+        path.close()
+        canvas.drawPath(path, paint)
+        
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+        
+        paint.color = Color.WHITE
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f - border, paint)
+        
+        if (photo != null) {
+            val scaledPhoto = Bitmap.createScaledBitmap(photo, size - border * 2, size - border * 2, true)
+            val circularPhoto = getCircularBitmap(scaledPhoto)
+            canvas.drawBitmap(circularPhoto, border.toFloat(), border.toFloat(), null)
+        } else {
+            paint.color = markerColor
+            paint.textSize = 40f
+            paint.textAlign = Paint.Align.CENTER
+            canvas.drawText("?", size / 2f, size / 2f + 15, paint)
+        }
+        
+        return output
+    }
+
+    private fun syncProfileToFirebase() {
+        currentCircleId?.let { circleId ->
+            database?.child("circles")?.child(circleId)?.child("members")?.child(userId)?.apply {
+                child("name").setValue(myName)
+                child("photo").setValue(myPhotoBase64)
+            }
+        }
+    }
+
+    private fun setupMap() {
+        binding.mapView.setTileSource(MapTileSources.DEFAULT)
+        binding.mapView.setMultiTouchControls(true)
+        mapTheme = MapThemeController(binding.mapView, MapTileSources.DEFAULT)
+
+        val rotationGestureOverlay = RotationGestureOverlay(binding.mapView)
+        rotationGestureOverlay.isEnabled = true
+        binding.mapView.overlays.add(rotationGestureOverlay)
+
+        val mapController = binding.mapView.controller
+        mapController.setZoom(15.0)
+    }
+
+    private fun createCircle(circleId: String) {
+        if (!initDatabase()) return
+        isAdmin = true
+        database?.child("circles")?.child(circleId)?.child("admin")?.setValue(userId)
+        joinCircle(circleId)
+    }
+
+    private fun joinCircle(circleId: String, isAutoJoin: Boolean = false) {
+        if (!initDatabase()) return
+
+        currentCircleId?.let { oldId ->
+            database?.child("circles")?.child(oldId)?.child("members")?.removeEventListener(circleValueListener)
+            database?.child("circles")?.child(oldId)?.child("admin")?.removeEventListener(adminValueListener)
+        }
+
+        currentCircleId = circleId
+        hasSeenSelfInCircle = false
+        requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putString(KEY_CIRCLE_ID, circleId).apply()
+
+        binding.tvCircleStatus.text = "Circle: $circleId"
+        binding.btnViewMembers.visibility = View.VISIBLE
+        binding.btnShareCode.visibility = View.VISIBLE
+        binding.editCircleCode.setText(circleId)
+
+        database?.child("circles")?.child(circleId)?.child("members")?.addValueEventListener(circleValueListener)
+        database?.child("circles")?.child(circleId)?.child("admin")?.addValueEventListener(adminValueListener)
+        
+        syncProfileToFirebase()
+        startP2P()
+        
+        if (!isAutoJoin) {
+            Toast.makeText(context, "Joined circle $circleId", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun initDatabase(): Boolean {
+        if (database == null) {
+            try {
+                database = FirebaseDatabase.getInstance().reference
+            } catch (e: Exception) {
+                Toast.makeText(context, "Cloud sync unavailable: ${e.message}", Toast.LENGTH_LONG).show()
+                return false
+            }
+        }
+        return true
+    }
+
+    private val adminValueListener = object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            val adminId = snapshot.getValue(String::class.java)
+            isAdmin = (adminId == userId)
+        }
+        override fun onCancelled(error: DatabaseError) {}
+    }
+
+    private val circleValueListener = object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            // Right after joining, our own member entry hasn't reached the server yet, so the
+            // first snapshot(s) may not contain us. Only treat "not present" as a kick once we've
+            // actually observed ourselves as a member at least once.
+            if (snapshot.hasChild(userId)) {
+                hasSeenSelfInCircle = true
+            } else if (hasSeenSelfInCircle && !isAdmin && currentCircleId != null) {
+                leaveCircle()
+                return
+            }
+
+            val currentMemberIds = mutableSetOf<String>()
+            snapshot.children.forEach { child ->
+                val id = child.key ?: return@forEach
+                currentMemberIds.add(id)
+                if (id == userId) return@forEach
+
+                // A member who hasn't gotten a location fix yet has no lat/lng written at all.
+                // Defaulting those to 0.0 used to pin them at Null Island instead of just not
+                // showing a marker until a real position arrives.
+                val lat = child.child("lat").getValue(Double::class.java) ?: return@forEach
+                val lng = child.child("lng").getValue(Double::class.java) ?: return@forEach
+                val name = child.child("name").getValue(String::class.java) ?: "User $id"
+                val photo = child.child("photo").getValue(String::class.java)
+                updateMarker(id, GeoPoint(lat, lng), isMe = false, name = name, photoBase64 = photo)
+            }
+            
+            val iterator = markers.entries.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (entry.key != "me" && !currentMemberIds.contains(entry.key)) {
+                    binding.mapView.overlays.remove(entry.value)
+                    iterator.remove()
+                }
+            }
+            binding.mapView.invalidate()
+        }
+        override fun onCancelled(error: DatabaseError) {}
+    }
+
+    private fun leaveCircle() {
+        stopP2P()
+        currentCircleId = null
+        isAdmin = false
+        hasSeenSelfInCircle = false
+        requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().remove(KEY_CIRCLE_ID).apply()
+        
+        binding.tvCircleStatus.text = "Join or Create a Circle"
+        binding.btnViewMembers.visibility = View.GONE
+        binding.btnShareCode.visibility = View.GONE
+        binding.editCircleCode.setText("")
+        
+        val iterator = markers.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.key != "me") {
+                binding.mapView.overlays.remove(entry.value)
+                iterator.remove()
+            }
+        }
+        binding.mapView.invalidate()
+    }
+
+    private fun updateMarker(id: String, position: GeoPoint, isMe: Boolean, name: String, photoBase64: String?) {
+        val photoBitmap = photoBase64?.let {
+            val decodedString = Base64.decode(it, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+        }
+        
+        val markerIcon = createMarkerIcon(photoBitmap, isMe)
+        
+        if (markers.containsKey(id)) {
+            val marker = markers[id]
+            marker?.position = position
+            marker?.title = name
+            marker?.icon = BitmapDrawable(resources, markerIcon)
+        } else {
+            val marker = Marker(binding.mapView)
+            marker.position = position
+            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            marker.title = name
+            marker.icon = BitmapDrawable(resources, markerIcon)
+            
+            binding.mapView.overlays.add(marker)
+            markers[id] = marker
+        }
+        binding.mapView.invalidate()
+    }
+
+    private fun shareCircleCode() {
+        val circleId = currentCircleId ?: return
+        val joinUrl = "norwinlabstools://join?code=$circleId"
+        val shareText = "Join my Circle on NorwinLabsTools so we can share locations!\n\n" +
+            "Tap to join: $joinUrl\n\n" +
+            "Or open the app and enter this code: $circleId"
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+        startActivity(Intent.createChooser(shareIntent, "Share Circle Code"))
+    }
+
+    private fun showMembersSheet() {
+        if (currentCircleId == null) return
+        val dialog = BottomSheetDialog(requireContext())
+
+        val sheetBinding = LayoutCircleMembersBinding.inflate(layoutInflater)
+        val recycler = sheetBinding.recyclerviewCircleMembers
+        recycler.layoutManager = LinearLayoutManager(context)
+
+        // Use a live listener for the member list to ensure it's always accurate
+        val membersListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val members = mutableListOf<CircleMember>()
+                snapshot.children.forEach { child ->
+                    val member = CircleMember(
+                        id = child.key ?: "",
+                        name = child.child("name").getValue(String::class.java) ?: "User",
+                        photoBase64 = child.child("photo").getValue(String::class.java),
+                        lastUpdated = child.child("lastUpdated").getValue(Long::class.java) ?: 0L
+                    )
+                    members.add(member)
+                }
+                
+                if (recycler.adapter == null) {
+                    recycler.adapter = MemberAdapter(members, isAdmin, userId) { memberId ->
+                        removeMember(memberId)
+                    }
+                } else {
+                    (recycler.adapter as MemberAdapter).updateMembers(members)
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        }
+
+        val membersRef = database?.child("circles")?.child(currentCircleId!!)?.child("members")
+        membersRef?.addValueEventListener(membersListener)
+
+        dialog.setOnDismissListener {
+            membersRef?.removeEventListener(membersListener)
+        }
+
+        dialog.setContentView(sheetBinding.root)
+        dialog.show()
+    }
+
+    private fun removeMember(memberId: String) {
+        if (!isAdmin) return
+        AlertDialog.Builder(requireContext())
+            .setTitle("Remove Member")
+            .setMessage("Remove user from circle?")
+            .setPositiveButton("Remove") { _, _ ->
+                database?.child("circles")?.child(currentCircleId!!)?.child("members")?.child(memberId)?.removeValue()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startLocationUpdates() {
+        try {
+            val providers = locationManager.getProviders(true)
+            for (provider in providers) {
+                locationManager.requestLocationUpdates(provider, 5000L, 5f, locationListener)
+            }
+        } catch (e: Exception) {}
+    }
+
+    private fun checkLocationPermissions() {
+        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+             permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+
+        val missing = permissions.filter { ActivityCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED }
+        if (missing.isNotEmpty()) {
+            requestPermissions(missing.toTypedArray(), LOCATION_PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != LOCATION_PERMISSION_REQUEST_CODE) return
+
+        val fineLocationIndex = permissions.indexOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        val fineLocationGranted = fineLocationIndex >= 0 && grantResults.getOrNull(fineLocationIndex) == PackageManager.PERMISSION_GRANTED
+        if (fineLocationGranted) {
+            startLocationUpdates()
+            centerOnLastKnownLocation()
+        }
+        // Retry P2P advertising/discovery in case Bluetooth/Nearby permissions were just granted.
+        if (currentCircleId != null) {
+            startP2P()
+        }
+    }
+
+    // --- P2P Nearby Connections ---
+
+    private fun startP2P() {
+        if (currentCircleId == null) return
+        
+        val endpointName = "${userId}|${myName}"
+        
+        val advertisingOptions = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
+        connectionsClient.startAdvertising(endpointName, currentCircleId!!, connectionLifecycleCallback, advertisingOptions)
+            .addOnFailureListener { e -> /* Handle error */ }
+
+        val discoveryOptions = DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
+        connectionsClient.startDiscovery(currentCircleId!!, endpointDiscoveryCallback, discoveryOptions)
+            .addOnFailureListener { e -> /* Handle error */ }
+    }
+
+    private fun stopP2P() {
+        connectionsClient.stopAdvertising()
+        connectionsClient.stopDiscovery()
+        connectionsClient.stopAllEndpoints()
+        activeConnections.clear()
+    }
+
+    private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
+        override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
+            connectionsClient.requestConnection(userId, endpointId, connectionLifecycleCallback)
+        }
+        override fun onEndpointLost(endpointId: String) {}
+    }
+
+    private val connectionLifecycleCallback = object : ConnectionLifecycleCallback() {
+        override fun onConnectionInitiated(endpointId: String, connectionInfo: ConnectionInfo) {
+            connectionsClient.acceptConnection(endpointId, payloadCallback)
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
+            if (result.status.isSuccess) {
+                activeConnections.add(endpointId)
+                // Send initial location
+                locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let { broadcastLocationP2P(it) }
+            }
+        }
+
+        override fun onDisconnected(endpointId: String) {
+            activeConnections.remove(endpointId)
+        }
+    }
+
+    private val payloadCallback = object : PayloadCallback() {
+        override fun onPayloadReceived(endpointId: String, payload: Payload) {
+            if (payload.type == Payload.Type.BYTES) {
+                val data = String(payload.asBytes()!!)
+                val parts = data.split(",")
+                if (parts.size >= 5 && parts[0] == "LOC") {
+                    val id = parts[1]
+                    val name = parts[2]
+                    val lat = parts[3].toDoubleOrNull() ?: 0.0
+                    val lng = parts[4].toDoubleOrNull() ?: 0.0
+                    activity?.runOnUiThread {
+                        updateMarker(id, GeoPoint(lat, lng), isMe = false, name = name, photoBase64 = null)
+                    }
+                }
+            }
+        }
+        override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) {}
+    }
+
+    private fun broadcastLocationP2P(location: Location) {
+        if (activeConnections.isEmpty()) return
+        val safeName = myName.replace(",", " ")
+        val data = "LOC,${userId},${safeName},${location.latitude},${location.longitude}"
+        val payload = Payload.fromBytes(data.toByteArray())
+        connectionsClient.sendPayload(activeConnections.toList(), payload)
+    }
+
+    data class CircleMember(
+        val id: String,
+        val name: String,
+        val photoBase64: String?,
+        val lastUpdated: Long = 0L
+    )
+
+    class MemberAdapter(
+        private var members: List<CircleMember>,
+        private val isAdmin: Boolean,
+        private val currentUserId: String,
+        private val onRemove: (String) -> Unit
+    ) : RecyclerView.Adapter<MemberAdapter.ViewHolder>() {
+
+        class ViewHolder(val binding: ItemCircleMemberBinding) : RecyclerView.ViewHolder(binding.root)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val binding = ItemCircleMemberBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return ViewHolder(binding)
+        }
+
+        @SuppressLint("NotifyDataSetChanged")
+        fun updateMembers(newMembers: List<CircleMember>) {
+            this.members = newMembers
+            notifyDataSetChanged()
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val member = members[position]
+            holder.binding.tvMemberId.text = if (member.id == currentUserId) "${member.name} (You)" else member.name
+            
+            member.photoBase64?.let {
+                val decodedString = Base64.decode(it, Base64.DEFAULT)
+                val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+                holder.binding.ivMemberAvatar.setImageBitmap(decodedByte)
+            } ?: run {
+                holder.binding.ivMemberAvatar.setImageResource(android.R.drawable.ic_menu_myplaces)
+            }
+
+            holder.binding.tvMemberStatus.text = statusText(member.lastUpdated)
+
+            if (isAdmin && member.id != currentUserId) {
+                holder.binding.btnRemoveMember.visibility = View.VISIBLE
+                holder.binding.btnRemoveMember.setOnClickListener { onRemove(member.id) }
+            } else {
+                holder.binding.btnRemoveMember.visibility = View.GONE
+            }
+        }
+
+        override fun getItemCount() = members.size
+
+        private fun statusText(lastUpdated: Long): String {
+            if (lastUpdated <= 0L) return "Location unknown"
+            val minutesAgo = (System.currentTimeMillis() - lastUpdated) / 60000
+            return when {
+                minutesAgo < 2 -> "Online"
+                minutesAgo < 60 -> "Last seen ${minutesAgo}m ago"
+                minutesAgo < 1440 -> "Last seen ${minutesAgo / 60}h ago"
+                else -> "Last seen ${minutesAgo / 1440}d ago"
+            }
+        }
+    }
+
+    override fun onResume() { super.onResume(); binding.mapView.onResume() }
+    override fun onPause() { super.onPause(); binding.mapView.onPause() }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        stopP2P()
+        locationManager.removeUpdates(locationListener)
+        _binding = null
+    }
+}

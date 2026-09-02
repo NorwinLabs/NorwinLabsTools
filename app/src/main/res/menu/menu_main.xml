@@ -1,14 +1,15 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context="com.example.norwinlabstools.MainActivity">
+    tools:context="com.norwinlabs.tools.MainActivity">
     
+    <!-- Opens the search screen rather than expanding an inline field: search now spans tools
+         and their contents, which is more than a filter over the current grid. -->
     <item
         android:id="@+id/action_search"
         android:icon="@android:drawable/ic_menu_search"
-        android:title="Search"
-        app:showAsAction="always|collapseActionView"
-        app:actionViewClass="androidx.appcompat.widget.SearchView" />
+        android:title="@string/action_search"
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_windhelm"

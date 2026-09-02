@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Lets a release be re-run after adding or rotating the signing secrets, without
+  # needing an empty commit to main to trigger it.
+  workflow_dispatch:
 
 jobs:
   lint:
@@ -44,9 +47,25 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # Removed Create Dummy Keystore - Using the keystore already in the repo for consistent signing
+      # The release keystore is no longer in the repository. It is restored from a
+      # repository secret for the length of this job and deleted afterwards.
+      - name: Restore release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 is not set. Add the signing secrets before releasing;"
+            echo "::error::without them the APK would be unsigned and could not install as an update."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Build Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
       - name: Get Version Info
@@ -73,6 +92,10 @@ jobs:
             git commit -m "chore: bump version to ${{ steps.get_version.outputs.version_name }} (build ${{ steps.get_version.outputs.version_code }}) [skip ci]"
             git push origin HEAD:main
           fi
+
+      - name: Remove release keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
