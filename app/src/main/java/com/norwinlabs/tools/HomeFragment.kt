@@ -12,17 +12,23 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.norwinlabs.tools.data.SettingsRepository
 import com.norwinlabs.tools.databinding.FragmentHomeBinding
+import com.norwinlabs.tools.data.db.NoteEntity
+import com.norwinlabs.tools.databinding.ItemNoteBinding
 import com.norwinlabs.tools.databinding.LayoutAddToolsBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -36,6 +42,8 @@ class HomeFragment : Fragment() {
     private lateinit var adapter: ToolsAdapter
 
     @Inject lateinit var settingsRepository: SettingsRepository
+
+    private val notesViewModel: NotesViewModel by viewModels()
 
     private lateinit var launcher: ToolLauncher
 
@@ -120,6 +128,13 @@ class HomeFragment : Fragment() {
             } else false
         }
 
+        binding.buttonAllNotes.setOnClickListener { findNavController().navigate(R.id.NotesFragment) }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                notesViewModel.notes.filterNotNull().collect { showRecentNotes(it.take(RECENT_NOTE_COUNT)) }
+            }
+        }
+
         binding.cardSearch.setOnClickListener {
             it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             findNavController().navigate(R.id.SearchFragment)
@@ -156,6 +171,20 @@ class HomeFragment : Fragment() {
             } else {
                 showAddToolsBottomSheet()
             }
+        }
+    }
+
+    private fun showRecentNotes(notes: List<NoteEntity>) {
+        binding.sectionRecentNotes.visibility = if (notes.isEmpty()) View.GONE else View.VISIBLE
+        binding.containerRecentNotes.removeAllViews()
+        for (note in notes) {
+            val row = ItemNoteBinding.inflate(layoutInflater, binding.containerRecentNotes, false)
+            row.tvNoteTitle.text = note.title
+            row.tvNoteBody.text = note.body
+            row.tvNoteBody.visibility = if (note.body.isBlank()) View.GONE else View.VISIBLE
+            row.tvNoteTime.text = relativeTime(note.timestamp)
+            row.cardNote.setOnClickListener { findNavController().navigate(R.id.NotesFragment) }
+            binding.containerRecentNotes.addView(row.root)
         }
     }
 
@@ -341,5 +370,8 @@ class HomeFragment : Fragment() {
     private companion object {
         /** What a brand new install starts with before the user customises Home. */
         const val DEFAULT_HOME_TOOL_COUNT = 4
+
+        /** Notes shown on Home before "See all". */
+        const val RECENT_NOTE_COUNT = 3
     }
 }

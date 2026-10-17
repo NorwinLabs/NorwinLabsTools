@@ -105,6 +105,45 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Recent notes: the thing most likely to be wanted when opening the app again. Hidden
+             until there is at least one note. -->
+        <LinearLayout
+            android:id="@+id/section_recent_notes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Recent notes"
+                    android:textAppearance="@style/TextAppearance.Norwin.SectionTitle" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_all_notes"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="See all" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/container_recent_notes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="-16dp"
+                android:orientation="vertical" />
+        </LinearLayout>
+
         <!-- Section header with an explicit Edit control; rearranging was long-press only. -->
         <LinearLayout
             android:layout_width="match_parent"

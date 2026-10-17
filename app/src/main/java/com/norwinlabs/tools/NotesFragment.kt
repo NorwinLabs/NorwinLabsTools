@@ -4,10 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -18,7 +15,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.norwinlabs.tools.data.db.NoteEntity
+import com.norwinlabs.tools.databinding.DialogNoteBinding
 import com.norwinlabs.tools.databinding.FragmentNotesBinding
+import com.norwinlabs.tools.databinding.ItemNoteBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -64,31 +63,18 @@ class NotesFragment : Fragment() {
     }
 
     private fun showNoteDialog(existing: NoteEntity?) {
-        val layout = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(50, 20, 50, 0)
-        }
+        val form = DialogNoteBinding.inflate(layoutInflater)
+        form.inputNoteTitle.setText(existing?.title ?: "")
+        form.inputNoteBody.setText(existing?.body ?: "")
 
-        val titleInput = EditText(context).apply {
-            hint = "Title"
-            setText(existing?.title ?: "")
-        }
-        val bodyInput = EditText(context).apply {
-            hint = "Note"
-            setText(existing?.body ?: "")
-            minLines = 4
-        }
-        layout.addView(titleInput)
-        layout.addView(bodyInput)
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(if (existing == null) "New Note" else "Edit Note")
-            .setView(layout)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(if (existing == null) "New note" else "Edit note")
+            .setView(form.root)
             .setPositiveButton("Save") { _, _ ->
                 viewModel.save(
                     id = existing?.id,
-                    title = titleInput.text.toString(),
-                    body = bodyInput.text.toString(),
+                    title = form.inputNoteTitle.text.toString(),
+                    body = form.inputNoteBody.text.toString(),
                 )
             }
             .setNegativeButton("Cancel", null)
@@ -96,8 +82,8 @@ class NotesFragment : Fragment() {
     }
 
     private fun showDeleteConfirm(note: NoteEntity) {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Delete Note")
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Delete note")
             .setMessage("Delete \"${note.title}\"?")
             .setPositiveButton("Delete") { _, _ -> viewModel.delete(note.id) }
             .setNegativeButton("Cancel", null)
@@ -113,24 +99,19 @@ class NotesFragment : Fragment() {
         private val onNoteLongClick: (NoteEntity) -> Unit,
     ) : ListAdapter<NoteEntity, NotesAdapter.ViewHolder>(DIFF) {
 
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val tvTitle: TextView = view.findViewById(android.R.id.text1)
-            val tvBody: TextView = view.findViewById(android.R.id.text2)
-        }
+        class ViewHolder(val binding: ItemNoteBinding) : RecyclerView.ViewHolder(binding.root)
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(android.R.layout.simple_list_item_2, parent, false)
-            return ViewHolder(view)
-        }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
+            ViewHolder(ItemNoteBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val note = getItem(position)
-            holder.tvTitle.text = note.title
-            holder.tvBody.text =
-                if (note.body.length > 80) "${note.body.take(80)}…" else note.body
-            holder.itemView.setOnClickListener { onNoteClick(note) }
-            holder.itemView.setOnLongClickListener { onNoteLongClick(note); true }
+            holder.binding.tvNoteTitle.text = note.title
+            holder.binding.tvNoteBody.text = note.body
+            holder.binding.tvNoteBody.visibility = if (note.body.isBlank()) View.GONE else View.VISIBLE
+            holder.binding.tvNoteTime.text = relativeTime(note.timestamp)
+            holder.binding.cardNote.setOnClickListener { onNoteClick(note) }
+            holder.binding.cardNote.setOnLongClickListener { onNoteLongClick(note); true }
         }
 
         private companion object {
@@ -146,3 +127,11 @@ class NotesFragment : Fragment() {
         _binding = null
     }
 }
+
+/** "5 minutes ago" style stamp, shared by the Notes list and Home's recent-notes card. */
+fun relativeTime(timestamp: Long): CharSequence =
+    android.text.format.DateUtils.getRelativeTimeSpanString(
+        timestamp,
+        System.currentTimeMillis(),
+        android.text.format.DateUtils.MINUTE_IN_MILLIS,
+    )
