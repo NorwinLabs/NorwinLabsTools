@@ -4,9 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingHorizontal="8dp"
-    android:paddingTop="16dp"
+    android:paddingTop="24dp"
     android:paddingBottom="4dp"
     android:text="Category"
-    android:textAppearance="?attr/textAppearanceSubtitle2"
-    android:textStyle="bold"
-    android:alpha="0.7" />
+    android:textAppearance="?attr/textAppearanceLabelLarge"
+    android:textColor="?attr/colorPrimary"
+    android:textStyle="bold" />
