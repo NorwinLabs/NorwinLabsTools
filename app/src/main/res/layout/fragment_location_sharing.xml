@@ -63,8 +63,6 @@
         android:layout_height="wrap_content"
         android:clickable="true"
         android:focusable="true"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="16dp"
         app:behavior_peekHeight="140dp"
         app:behavior_hideable="false"
         app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">

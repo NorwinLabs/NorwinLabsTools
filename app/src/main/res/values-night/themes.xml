@@ -34,6 +34,9 @@
         <item name="colorSurfaceContainerHighest">@color/md_theme_dark_surfaceContainerHighest</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
 
+        <item name="materialCardViewStyle">@style/Widget.Norwin.CardView</item>
+        <item name="toolbarStyle">@style/Widget.Norwin.Toolbar</item>
+
         <item name="shapeAppearanceCornerSmall">@style/ShapeAppearance.Norwin.Small</item>
         <item name="shapeAppearanceCornerMedium">@style/ShapeAppearance.Norwin.Medium</item>
         <item name="shapeAppearanceCornerLarge">@style/ShapeAppearance.Norwin.Large</item>

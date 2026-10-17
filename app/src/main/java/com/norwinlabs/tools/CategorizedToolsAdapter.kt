@@ -59,7 +59,7 @@ class CategorizedToolsAdapter(
             is ListEntry.Header -> (holder as HeaderViewHolder).textView.text = entry.category
             is ListEntry.ToolEntry -> {
                 val toolHolder = holder as ToolViewHolder
-                bindToolCard(toolHolder.binding, entry.tool)
+                bindToolCard(toolHolder.binding, entry.tool, showCategory = false)
                 toolHolder.binding.buttonRemove.visibility = android.view.View.GONE
                 toolHolder.binding.cardTool.setOnClickListener { onToolClick(entry.tool) }
                 toolHolder.binding.cardTool.setOnLongClickListener { false }

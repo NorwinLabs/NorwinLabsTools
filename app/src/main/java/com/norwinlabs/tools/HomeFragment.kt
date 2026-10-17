@@ -2,6 +2,7 @@ package com.norwinlabs.tools
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.text.format.DateFormat
 import android.view.HapticFeedbackConstants
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -11,16 +12,23 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.norwinlabs.tools.data.SettingsRepository
 import com.norwinlabs.tools.databinding.FragmentHomeBinding
+import com.norwinlabs.tools.data.db.NoteEntity
+import com.norwinlabs.tools.databinding.ItemNoteBinding
 import com.norwinlabs.tools.databinding.LayoutAddToolsBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -34,6 +42,8 @@ class HomeFragment : Fragment() {
     private lateinit var adapter: ToolsAdapter
 
     @Inject lateinit var settingsRepository: SettingsRepository
+
+    private val notesViewModel: NotesViewModel by viewModels()
 
     private lateinit var launcher: ToolLauncher
 
@@ -91,6 +101,7 @@ class HomeFragment : Fragment() {
             onRemoveClick = { tool ->
                 adapter.removeTool(tool)
                 saveHomeTools()
+                updateEmptyState()
             }
         )
 
@@ -117,6 +128,24 @@ class HomeFragment : Fragment() {
             } else false
         }
 
+        binding.buttonAllNotes.setOnClickListener { findNavController().navigate(R.id.NotesFragment) }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                notesViewModel.notes.filterNotNull().collect { showRecentNotes(it.take(RECENT_NOTE_COUNT)) }
+            }
+        }
+
+        binding.cardSearch.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            findNavController().navigate(R.id.SearchFragment)
+        }
+
+        binding.buttonEditHome.setOnClickListener {
+            it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            adapter.isEditMode = !adapter.isEditMode
+            updateToolbar()
+        }
+
         binding.cardWidgetUpdates.setOnClickListener {
             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             checkForUpdates()
@@ -130,6 +159,9 @@ class HomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        // Refreshed on every resume rather than once, so the app left open overnight doesn't
+        // greet the next morning with yesterday's date.
+        showGreeting()
         val fab = activity?.findViewById<View>(R.id.fab)
         fab?.setOnClickListener {
             it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
@@ -142,14 +174,42 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private fun showRecentNotes(notes: List<NoteEntity>) {
+        binding.sectionRecentNotes.visibility = if (notes.isEmpty()) View.GONE else View.VISIBLE
+        binding.containerRecentNotes.removeAllViews()
+        for (note in notes) {
+            val row = ItemNoteBinding.inflate(layoutInflater, binding.containerRecentNotes, false)
+            row.tvNoteTitle.text = note.title
+            row.tvNoteBody.text = note.body
+            row.tvNoteBody.visibility = if (note.body.isBlank()) View.GONE else View.VISIBLE
+            row.tvNoteTime.text = relativeTime(note.timestamp)
+            row.cardNote.setOnClickListener { findNavController().navigate(R.id.NotesFragment) }
+            binding.containerRecentNotes.addView(row.root)
+        }
+    }
+
+    private fun showGreeting() {
+        val now = Calendar.getInstance()
+        binding.textviewGreeting.text = when (now.get(Calendar.HOUR_OF_DAY)) {
+            in 5..11 -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            in 17..21 -> "Good evening"
+            else -> "Good night"
+        }
+        binding.textviewDate.text =
+            DateFormat.format(DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEEMMMMd"), now)
+    }
+
     private fun updateToolbar() {
         val activity = activity as? MainActivity ?: return
         if (adapter.isEditMode) {
             activity.supportActionBar?.title = "Edit Home"
             backPressedCallback.isEnabled = true
+            binding.buttonEditHome.text = "Done"
         } else {
             activity.supportActionBar?.title = getString(R.string.app_name)
             backPressedCallback.isEnabled = false
+            binding.buttonEditHome.text = "Edit"
         }
     }
 
@@ -169,7 +229,8 @@ class HomeFragment : Fragment() {
             override fun onUpdateAvailable(latestVersion: String, downloadUrl: String) {
                 activity?.runOnUiThread {
                     binding.textviewUpdateStatus.text = "New version: $latestVersion"
-                    binding.textviewUpdateStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark, null))
+                    binding.textviewUpdateStatus.setTextColor(
+                        MaterialColors.getColor(binding.textviewUpdateStatus, com.google.android.material.R.attr.colorPrimary))
                     if (silent) return@runOnUiThread
 
                     AlertDialog.Builder(requireContext())
@@ -201,7 +262,8 @@ class HomeFragment : Fragment() {
             override fun onNoUpdate() {
                 activity?.runOnUiThread {
                     binding.textviewUpdateStatus.text = "Up to date"
-                    binding.textviewUpdateStatus.setTextColor(resources.getColor(android.R.color.darker_gray, null))
+                    binding.textviewUpdateStatus.setTextColor(
+                        MaterialColors.getColor(binding.textviewUpdateStatus, com.google.android.material.R.attr.colorOnSurfaceVariant))
                     if (!silent) {
                         Toast.makeText(requireContext(), "You are on the latest version", Toast.LENGTH_SHORT).show()
                     }
@@ -248,6 +310,7 @@ class HomeFragment : Fragment() {
         val sheetAdapter = CategorizedToolsAdapter(availableToAdd, ToolRegistry.categoryOrder) { tool ->
             adapter.addTool(tool)
             saveHomeTools()
+            updateEmptyState()
             dialog.dismiss()
         }
         val spanCount = 3
@@ -276,7 +339,13 @@ class HomeFragment : Fragment() {
                 if (savedIds == null) ToolRegistry.all.take(DEFAULT_HOME_TOOL_COUNT)
                 else ToolRegistry.byIds(savedIds)
             )
+            updateEmptyState()
         }
+    }
+
+    private fun updateEmptyState() {
+        binding.textviewNoToolsFound.visibility =
+            if (adapter.itemCount == 0) View.VISIBLE else View.GONE
     }
 
     private fun setupHeaderAndFooter() {
@@ -287,7 +356,6 @@ class HomeFragment : Fragment() {
             "1.0.0"
         }
         
-        binding.textviewHeaderVersion.text = "v$versionName"
         binding.textviewVersion.text = "Version $versionName"
 
         val year = Calendar.getInstance().get(Calendar.YEAR)
@@ -302,5 +370,8 @@ class HomeFragment : Fragment() {
     private companion object {
         /** What a brand new install starts with before the user customises Home. */
         const val DEFAULT_HOME_TOOL_COUNT = 4
+
+        /** Notes shown on Home before "See all". */
+        const val RECENT_NOTE_COUNT = 3
     }
 }
